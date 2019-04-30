@@ -1,11 +1,12 @@
-﻿var PLANEWIDTH = 40;
-var PLANEHEIGHT = 35;
-var CUBEWIDTH = 2;
-var CUBEHEIGHT = 1;
-var BARWIDTH = 5;
-var BARHEIGHT = 1;
+﻿var PLANEWIDTH = window.innerWidth;
+var PLANEHEIGHT = window.innerHeight;
+var CUBEWIDTH = window.innerWidth/30;
+var CUBEHEIGHT =  window.innerHeight/25;
+var BARWIDTH = window.innerWidth/25;
+var BARHEIGHT = window.innerHeight/25;
 var beginDrawBarOnPlane = -PLANEWIDTH/2 + CUBEWIDTH/2; 
 var EndDrawBarOnPlane = PLANEWIDTH/2+ CUBEWIDTH/2; 
+
 
 var scene;
 var camera;
@@ -35,11 +36,12 @@ var init = function () {
     this.createMoveBar();
     this.ref();
 
-    camera.position.z = 100;
-    camera.position.x = 0;//50
+    camera.position.z = 850;
+    camera.position.x = 0;//50 //0
+    camera.position.y = 0;
     //camera.rotation.x = 180 * Math.PI / 180;
     //camera.position.x = 100;
-    camera.rotation.y = 0 * Math.PI / 180; //45 * Math.PI / 180;
+    camera.rotation.y = 0 * Math.PI / 180; //45 * Math.PI / 180;//0 * Math.PI / 180;
 
     this.render();
 };
@@ -76,8 +78,6 @@ function desenhaBarreira() {
     color: "red", wireframe: true
   });
 
-
-
   //Começa a desenhar na posicção 0 do z e o y e na posição negativa de metade do plano que desenhamos (que tem centro em 0)
   //Acaba de desenhar no valor positivo do x igual a metade do plano desenhado e neste caso o y vai até 5 (0 -> 5)
   for (var i = 0 ; i < CUBEHEIGHT*5; i+= CUBEHEIGHT) { // linhas
@@ -88,6 +88,7 @@ function desenhaBarreira() {
         cube.position.z =0;
         cube.position.y = i;
         cube.position.x = j;
+        cube.name = 'box' + cube.position.x.toString() + "," + cube.position.y.toString(); 
         // Add the cube
         scene.add(cube);
         // Used later for collision detection
@@ -128,9 +129,11 @@ var animateMoveBar = function()
 
 
 var createAPlane = function () {
-    var geometry = new THREE.PlaneGeometry( PLANEWIDTH, PLANEHEIGHT, 32 );
+    var geometry = new THREE.PlaneGeometry( PLANEWIDTH, PLANEHEIGHT );
     var material = new THREE.MeshBasicMaterial( {color: "gray"} );
     var plane = new THREE.Mesh( geometry, material );
+
+
 
     scene.add( plane );
 
