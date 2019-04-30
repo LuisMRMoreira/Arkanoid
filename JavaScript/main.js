@@ -5,7 +5,8 @@ var CUBEHEIGHT =  window.innerHeight/25;
 var BARWIDTH = window.innerWidth/25;
 var BARHEIGHT = window.innerHeight/25;
 var beginDrawBarOnPlane = -PLANEWIDTH/2 + CUBEWIDTH/2; 
-var EndDrawBarOnPlane = PLANEWIDTH/2+ CUBEWIDTH/2; 
+var EndDrawBarOnPlane = PLANEWIDTH/2 - CUBEWIDTH/2;
+var speedMoveBar = window.innerWidth*0.01;
 
 
 var scene;
@@ -28,7 +29,9 @@ var init = function () {
     renderer = new THREE.WebGLRenderer();
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
-
+    
+    document.addEventListener('keydown', checkKey);
+    window.addEventListener('resize',onWindowResize,false);
     //this.createLight();
     
     this.createAPlane();
@@ -49,7 +52,8 @@ var init = function () {
 var render = function () {
     requestAnimationFrame(render);
 
-    this.animateMoveBar();
+    //this.animateMoveBar();
+    
     renderer.render(scene, camera);
 };
 
@@ -80,8 +84,8 @@ function desenhaBarreira() {
 
   //Começa a desenhar na posicção 0 do z e o y e na posição negativa de metade do plano que desenhamos (que tem centro em 0)
   //Acaba de desenhar no valor positivo do x igual a metade do plano desenhado e neste caso o y vai até 5 (0 -> 5)
-  for (var i = 0 ; i < CUBEHEIGHT*5; i+= CUBEHEIGHT) { // linhas
-    for (var j = beginDrawBarOnPlane; j < EndDrawBarOnPlane; j+=CUBEWIDTH) {//colunas
+  for (var i = 0 ; i <= CUBEHEIGHT*5; i+= CUBEHEIGHT) { // linhas
+    for (var j = beginDrawBarOnPlane; j <= EndDrawBarOnPlane; j+=CUBEWIDTH) {//colunas
         // Make the cube
         cube = new THREE.Mesh(cubeGeo, cubeMat);
         //Set yhe cube location
@@ -107,31 +111,42 @@ var createMoveBar = function()
     var barMat = new THREE.MeshBasicMaterial({ color: "red", });
     bar = new THREE.Mesh(barGeo, barMat);
     bar.position.y = -PLANEHEIGHT/2 +4;//Para iniciar, 
-
+    bar.name = 'bar';
     scene.add(bar);
 }
 
-//Faz a barra movimentar-se entre cada um dos lados do plano (vai ser chamado no render)
-var animateMoveBar = function()
-{
-    //bar.position.x +=0.1;
-    if (bar.position.x == beginDrawBarOnPlane) {
-        bar.position.x +=0.1;
-    }else 
-    {
-        if (bar.position.x == EndDrawBarOnPlane) {
-            bar.position.x -=0.1;
+
+function checkKey(evt) {
+    const key = evt.key;
+    const keyCode = evt.keyCode;
+  
+    if (key == 'ArrowRight' || keyCode == 39){
+        var barr = scene.getObjectByName('bar');
+  
+        if (barr.position.x <= EndDrawBarOnPlane) {
+          barr.position.x += speedMoveBar;
         }
     }
 
+    else if (key == 'ArrowLeft' || keyCode == 37){
+        var barr = scene.getObjectByName('bar');
+  
+        if (barr.position.x >= beginDrawBarOnPlane) {
+          barr.position.x -= speedMoveBar;
+        }
+    }
+  }
 
-}
+
+
+//Faz a barra movimentar-se entre cada um dos lados do plano (vai ser chamado no render)
+
 
 
 var createAPlane = function () {
     var geometry = new THREE.PlaneGeometry( PLANEWIDTH, PLANEHEIGHT );
     var material = new THREE.MeshBasicMaterial( {color: "gray"} );
-    var plane = new THREE.Mesh( geometry, material );
+    plane = new THREE.Mesh( geometry, material );
 
 
 
@@ -150,6 +165,15 @@ var createAPlane = function () {
 //    cube.rotation.x += 0.1;
 //    cube.rotation.y += 0.1;
 //};
+
+function onWindowResize()
+{
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth , window.innerHeight);
+
+    plane.setSize(window.innerWidth , window.innerHeight);
+}
 
 window.onload = this.init;
 
