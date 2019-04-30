@@ -36,6 +36,15 @@ var ENDDRAWLINES = BEGINDRAWLINES - NUMLINHAS * CUBEHEIGHT;//Limite inferior da 
 //Tamanho da bola
 var BALLRADIUS = PLANEWIDTH/40;
 
+
+var pallete = [
+  [0xF2DC00, 0x00CADB, 0xCC0000, 0x009C0B, 0x725000],
+  [0x9EDF60, 0x42A2C7, 0xF4DBDB, 0x26418B, 0x020922],
+  [0xFF4ADC, 0xDFB14F, 0xEFF17A, 0x78CB6D, 0x18F7FF],
+];
+
+
+
 var scene;
 var camera;
 var controls
@@ -46,6 +55,9 @@ var plane;
 var collidableObjects = []; // An array of collidable objects used later
 var bar
 var sphere;
+var leftWall;
+var rigthWall;
+var upWall;
 
 
 
@@ -67,6 +79,7 @@ var init = function () {
     this.desenhaBarreira();
     this.createMoveBar();
     this.createASphere();
+    this.createSideWalls();
     this.ref();
     this.cameraResize();
 
@@ -78,7 +91,7 @@ var init = function () {
 };
 
 var cameraResize = function () {
-  camera.position.z = 25;//Math.pow(PLANEWIDTH); //PLANEWIDTH/PLANEHEIGHT;
+  camera.position.z = 30;//Math.pow(PLANEWIDTH); //PLANEWIDTH/PLANEHEIGHT;
   camera.position.x = 0;//50 //0
   camera.position.y = 0; 
 };
@@ -107,30 +120,47 @@ function desenhaBarreira() {
 
   // wall details
   var cubeGeo = new THREE.BoxGeometry(CUBEWIDTH, CUBEHEIGHT, CUBEWIDTH);
-  var cubeMat = new THREE.MeshBasicMaterial({
-    color: "red", wireframe: true
-  });
+  var indexPlallet = Math.floor(Math.random() * 3);  
 
   //Começa a desenhar na posicção 0 do z e o y e na posição negativa de metade do plano que desenhamos (que tem centro em 0)
   //Acaba de desenhar no valor positivo do x igual a metade do plano desenhado e neste caso o y vai até 5 (0 -> 5)
   for (var i =  BEGINDRAWLINES ; i >= ENDDRAWLINES; i-= CUBEHEIGHT) { // linhas
     for (var j = BEGINCUBELINE; j <= ENDCUBELINE; j+=CUBEWIDTH) {//colunas
-        // Make the cube
-        cube = new THREE.Mesh(cubeGeo, cubeMat);
-        //Set yhe cube location
-        cube.position.z =0;
-        cube.position.y = i;
-        cube.position.x = j;
-        cube.name = 'box' + cube.position.x.toString() + "," + cube.position.y.toString(); 
-        // Add the cube
-        scene.add(cube);
-        // Used later for collision detection
-        collidableObjects.push(cube);
+
+        this.createCube(indexPlallet, cubeGeo,i,j)
 
     }
   }
     // The size of the maze will be how many cubes wide the array is * the width of a cube
     //mapSize = totalCubesWide * CUBEWIDTH;
+}
+
+
+var createCube = function(indexPlallet,cubeGeo,i,j)
+{
+  var randomNumber = Math.floor(Math.random() * 5);  
+  var cubeMat = new THREE.MeshBasicMaterial({
+    color: pallete[indexPlallet][randomNumber]
+  });
+  
+  // Make the cube
+  cube = new THREE.Mesh(cubeGeo, cubeMat);
+  //Set yhe cube location
+  cube.position.z =0;
+  cube.position.y = i;
+  cube.position.x = j;
+  cube.name = 'box' + cube.position.x.toString() + "," + cube.position.y.toString(); 
+
+  
+  this.bordas(cube, 0x000000);
+
+
+  // Add the cube
+  scene.add(cube);
+  // Used later for collision detection
+  collidableObjects.push(cube);
+
+
 }
 
 //Criar a barra que o utilizador vai controlar 
@@ -142,30 +172,33 @@ var createMoveBar = function()
     bar.position.y = -PLANEHEIGHT/2 +4;//Para iniciar,
     bar.position.z = BARWIDTH/2;
     bar.name = 'bar';
+
+    this.bordas(bar, 0xFFFFFF);
+
     scene.add(bar);
 }
 
 
 function checkKey(evt) {
-    const key = evt.key;
-    const keyCode = evt.keyCode;
-  
-    if (key == 'ArrowRight' || keyCode == 39){
-        var barr = scene.getObjectByName('bar');
-  
-        if (barr.position.x <= ENDBARMOVE) {
-          barr.position.x += SPEEDMOVEBAR;
-        }
-    }
+  const key = evt.key;
+  const keyCode = evt.keyCode;
 
-    else if (key == 'ArrowLeft' || keyCode == 37){
-        var barr = scene.getObjectByName('bar');
-  
-        if (barr.position.x >= BEGINBARMOVE) {
-          barr.position.x -= SPEEDMOVEBAR;
-        }
-    }
+  if (key == 'ArrowRight' || keyCode == 39){
+      var barr = scene.getObjectByName('bar');
+
+      if (barr.position.x <= ENDBARMOVE) {
+        barr.position.x += SPEEDMOVEBAR;
+      }
   }
+
+  else if (key == 'ArrowLeft' || keyCode == 37){
+      var barr = scene.getObjectByName('bar');
+
+      if (barr.position.x >= BEGINBARMOVE) {
+        barr.position.x -= SPEEDMOVEBAR;
+      }
+  }
+}
 
 var createAPlane = function () {
     var geometry = new THREE.PlaneGeometry( PLANEWIDTH, PLANEHEIGHT );
@@ -181,8 +214,9 @@ var createASphere = function()
   var material = new THREE.MeshBasicMaterial( {color: 0x080ff});
   sphere = new THREE.Mesh( geometry, material );
   sphere.position.y = -2;
+  this.bordas(sphere, 0xFFFFFF);
   scene.add( sphere );
-}
+};
 
 function onWindowResize()
 {
@@ -191,6 +225,40 @@ function onWindowResize()
     renderer.setSize(window.innerWidth , window.innerHeight);
 
     plane.setSize(window.innerWidth , window.innerHeight);
+}
+
+function createSideWalls(){
+  var geometrySides = new THREE.BoxGeometry(CUBEWIDTH/3,PLANEHEIGHT,PLANEWIDTH/4);
+  var geometryUP = new THREE.BoxGeometry(PLANEWIDTH + 2*CUBEWIDTH/3,CUBEWIDTH/3,PLANEWIDTH/4);
+  var material = new THREE.MeshBasicMaterial({color: "green"});
+  rigthWall = new THREE.Mesh(geometrySides,material);
+  upWall = new THREE.Mesh(geometryUP,material);
+  leftWall = new THREE.Mesh(geometrySides,material);
+
+  upWall.position.y = PLANEHEIGHT/2;
+  leftWall.position.x = PLANEWIDTH/2 + (CUBEWIDTH/3)/2;
+  rigthWall.position.x = -PLANEWIDTH/2 - (CUBEWIDTH/3)/2;
+
+  scene.add(rigthWall);
+  scene.add(leftWall);
+  scene.add(upWall);
+  this.bordas(rigthWall, 0xFFFFFF);
+  this.bordas(upWall, 0xFFFFFF);
+  this.bordas(leftWall, 0xFFFFFF);
+
+
+
+}
+
+
+// Desenha bordas para qulquer objeto (passado como parametro) e de qualquer cor(Passado como parametro)
+function bordas(objeto, cor)
+{
+  var geo = new THREE.EdgesGeometry( objeto.geometry ); // or WireframeGeometry
+  var mat = new THREE.LineBasicMaterial( { color: cor, linewidth: 2 } );
+  var wireframe = new THREE.LineSegments( geo, mat );
+  objeto.add( wireframe );
+
 }
 
 
