@@ -13,7 +13,7 @@ var CUBEWIDTH =  PLANEWIDTH/15;//Vai ter 15 cubos em cada linha
 var CUBEHEIGHT = CUBEWIDTH/2.5;//2.5 pareceu-me o melhor valor
 
 //Tamanho da Barra que se movimeta no fundo
-var BARWIDTH = PLANEWIDTH/10;
+var BARWIDTH = PLANEWIDTH/7;
 var BARHEIGHT = PLANEHEIGHT/60;
 //Velocidade a que a barra se movimenta
 var SPEEDMOVEBAR = PLANEWIDTH*0.01; // aumenta-se o 0.01 para aumentar a velocidade
@@ -36,14 +36,22 @@ var ENDDRAWLINES = BEGINDRAWLINES - NUMLINHAS * CUBEHEIGHT;//Limite inferior da 
 //Tamanho da bola
 var BALLRADIUS = PLANEWIDTH/40;
 
-
+//Tabela de cores usadas para pintar os blocos aleatoriamente
 var pallete = [
   [0xF2DC00, 0x00CADB, 0xCC0000, 0x009C0B, 0x725000],
   [0x9EDF60, 0x42A2C7, 0xF4DBDB, 0x26418B, 0x020922],
   [0xFF4ADC, 0xDFB14F, 0xEFF17A, 0x78CB6D, 0x18F7FF],
 ];
 
+//"Velocidade" e direção da bola. Em cada "iteração" do render, anda 0.5 no referencial
+var Xincremento = 0.15;
+var Yincremento = 0.15;
 
+//Profundidade das paredes laterais
+var SIDEWALLSDEPTH = CUBEWIDTH/4;
+
+
+var bolaCoordenadasBase = {x: 0, y: -2};
 
 var scene;
 var camera;
@@ -53,11 +61,12 @@ var renderer;
 
 var plane;
 var collidableObjects = []; // An array of collidable objects used later
-var bar
-var sphere;
+var bar;
+var ball;
 var leftWall;
 var rigthWall;
 var upWall;
+var qtObjects = 0;
 
 
 
@@ -75,11 +84,7 @@ var init = function () {
     
     //this.createLight();
     
-    this.createAPlane();
-    this.desenhaBarreira();
-    this.createMoveBar();
-    this.createASphere();
-    this.createSideWalls();
+    this.criarTodosOsObjetos();
     this.ref();
     this.cameraResize();
 
@@ -91,24 +96,178 @@ var init = function () {
 };
 
 var cameraResize = function () {
-  camera.position.z = 30;//Math.pow(PLANEWIDTH); //PLANEWIDTH/PLANEHEIGHT;
+  camera.position.z = 25;//Math.pow(PLANEWIDTH); //PLANEWIDTH/PLANEHEIGHT;
   camera.position.x = 0;//50 //0
-  camera.position.y = 0; 
+  //camera.position.y = -15; 
+
+  //camera.rotation.x = 35* Math.PI / 180;
 };
 
 var render = function () {
     requestAnimationFrame(render);
 
     //this.animateMoveBar();
-    
+    this.tratamentoDeColisoes();
+
     renderer.render(scene, camera);
 };
+
+function tratamentoDeColisoes()
+{
+  /*O javaScript usa muitas casas decimais (grande precisão). o incremento neste caso é só de 0.1, ou seja entre as várias posições, 
+  só queremos compara os dois primeiros digitos da parte decimal, daí fazermos um arredondamento para duas casas decimais (Math.round)*/
+
+  /*Caso a posição da bola seja igual à do limite do plano (x = PLANEWIDTH/2 ou x = -PLANEWIDTH/2), o valor incrementado na posição 
+  da bolta tem de ser o inverso do que estava em vigor. Por exemplo, caso a bola esteja a movimentar-se na horizontal a 
+  uma "velocidade" (incremento) de 0.1, quando a sua posição coincida com o limite do plano, a "velocidade" passa a ser de -0.1, 
+  ou seja, a cada interceção no x, o incremento é o negativo do que estava a ser incrementado (++ = +, -+ = -, -- = +)  
+  */
+  
+  // Colisão com as paredes laterais
+  if (Math.round(ball.position.x+BALLRADIUS) === Math.round(PLANEWIDTH/2) || Math.round(ball.position.x) === Math.round(-PLANEWIDTH/2)) //ERRO!!!! Pelos vistos -10 = -6
+  {
+    Xincremento = -Xincremento;
+  }    
+    
+  // Colsão com a parede de cima e o fundo
+  if (Math.round(ball.position.y) === Math.round(PLANEHEIGHT/2) || Math.round(ball.position.y-BALLRADIUS) === Math.round(-PLANEHEIGHT/2))
+  {
+    Yincremento = -Yincremento;
+  }
+
+  // for (let i = 0; i < collidableObjects.length; i++) {
+    
+  //   const element = array[i];
+    
+  // }  
+
+
+
+  //Incremento do valor após possivelmente se ter calculado acolisão
+  ball.position.x += Xincremento;
+  ball.position.y += Yincremento;
+}
+
 
 //referencial x y z
 var ref = function () 
 {
     var axesHelper = new THREE.AxesHelper( 20 );
     scene.add( axesHelper );
+}
+
+function checkKey(evt) {
+  const key = evt.key;
+  const keyCode = evt.keyCode;
+
+  if (key == 'ArrowRight' || keyCode == 39){
+      var barr = scene.getObjectByName('bar');
+
+      if (barr.position.x <= ENDBARMOVE) {
+        barr.position.x += SPEEDMOVEBAR;
+      }
+  }
+  else if (key == 'ArrowLeft' || keyCode == 37){
+      var barr = scene.getObjectByName('bar');
+
+      if (barr.position.x >= BEGINBARMOVE) {
+        barr.position.x -= SPEEDMOVEBAR;
+      }
+  }
+  
+}
+
+function onWindowResize()
+{
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth , window.innerHeight);
+
+    //plane.setSize(window.innerWidth , window.innerHeight);
+}
+
+function criarTodosOsObjetos()
+{
+  this.createAPlane();
+  this.createSideWalls();
+  this.createASphere();
+  this.createMoveBar();  
+  this.desenhaBarreira();
+}
+
+function createSideWalls(){
+  var geometrySides = new THREE.BoxGeometry(CUBEWIDTH/3,PLANEHEIGHT,PLANEWIDTH/4);
+  var geometryUP = new THREE.BoxGeometry(PLANEWIDTH + 2*CUBEWIDTH/3,CUBEWIDTH/3,PLANEWIDTH/4);
+  var material = new THREE.MeshBasicMaterial({color: "green"});
+  rigthWall = new THREE.Mesh(geometrySides,material);
+  upWall = new THREE.Mesh(geometryUP,material);
+  leftWall = new THREE.Mesh(geometrySides,material);
+
+  upWall.position.y = PLANEHEIGHT/2 + (CUBEHEIGHT/2);
+  rigthWall.position.x = PLANEWIDTH/2 + (SIDEWALLSDEPTH)/2;
+  leftWall.position.x = -PLANEWIDTH/2 - (SIDEWALLSDEPTH)/2;
+
+  scene.add(rigthWall);
+  scene.add(leftWall);
+  scene.add(upWall);
+  this.bordas(rigthWall, 0xFFFFFF);
+  this.bordas(upWall, 0xFFFFFF);
+  this.bordas(leftWall, 0xFFFFFF);
+}
+
+var createAPlane = function () {
+  var geometry = new THREE.PlaneGeometry( PLANEWIDTH, PLANEHEIGHT );
+  var material = new THREE.MeshBasicMaterial( {color: "gray"} );
+  plane = new THREE.Mesh( geometry, material );
+  scene.add( plane );
+
+};
+
+var createASphere = function()
+{
+var geometry = new THREE.SphereGeometry( BALLRADIUS, 20, 20 );
+var material = new THREE.MeshBasicMaterial( {color: 0x080ff});
+ball = new THREE.Mesh( geometry, material );
+ball.position.y = -2;
+this.bordas(ball, 0xFFFFFF);
+scene.add( ball );
+};
+
+//Criar a barra que o utilizador vai controlar 
+var createMoveBar = function()
+{
+    var barGeo = new THREE.BoxGeometry(BARWIDTH, BARHEIGHT, BARWIDTH);
+    var barMat = new THREE.MeshBasicMaterial({ color: "red", });
+    bar = new THREE.Mesh(barGeo, barMat);
+    bar.position.y = -PLANEHEIGHT/2 +4;//Para iniciar,
+    bar.position.z = BARWIDTH/2;
+    bar.name = 'bar';
+
+    this.bordas(bar, 0xFFFFFF);
+
+    scene.add(bar);
+}
+
+var createCube = function(indexPlallet,cubeGeo,i,j)
+{
+  var randomNumber = Math.floor(Math.random() * 5);  
+  var cubeMat = new THREE.MeshBasicMaterial({
+    color: pallete[indexPlallet][randomNumber]
+  });
+  
+  // Make the cube
+  cube = new THREE.Mesh(cubeGeo, cubeMat);
+  //Set yhe cube location
+  cube.position.z =0;
+  cube.position.y = i;
+  cube.position.x = j;
+  cube.name = 'box' + cube.position.x.toString() + "," + cube.position.y.toString();   
+  this.bordas(cube, 0x000000);
+  scene.add(cube);
+  // Used later for collision detection
+  collidableObjects.push(cube);
+
+
 }
 
 function desenhaBarreira() {
@@ -128,126 +287,11 @@ function desenhaBarreira() {
     for (var j = BEGINCUBELINE; j <= ENDCUBELINE; j+=CUBEWIDTH) {//colunas
 
         this.createCube(indexPlallet, cubeGeo,i,j)
-
+        qtObjects++;
     }
   }
     // The size of the maze will be how many cubes wide the array is * the width of a cube
     //mapSize = totalCubesWide * CUBEWIDTH;
-}
-
-
-var createCube = function(indexPlallet,cubeGeo,i,j)
-{
-  var randomNumber = Math.floor(Math.random() * 5);  
-  var cubeMat = new THREE.MeshBasicMaterial({
-    color: pallete[indexPlallet][randomNumber]
-  });
-  
-  // Make the cube
-  cube = new THREE.Mesh(cubeGeo, cubeMat);
-  //Set yhe cube location
-  cube.position.z =0;
-  cube.position.y = i;
-  cube.position.x = j;
-  cube.name = 'box' + cube.position.x.toString() + "," + cube.position.y.toString(); 
-
-  
-  this.bordas(cube, 0x000000);
-
-
-  // Add the cube
-  scene.add(cube);
-  // Used later for collision detection
-  collidableObjects.push(cube);
-
-
-}
-
-//Criar a barra que o utilizador vai controlar 
-var createMoveBar = function()
-{
-    var barGeo = new THREE.BoxGeometry(BARWIDTH, BARHEIGHT, BARWIDTH);
-    var barMat = new THREE.MeshBasicMaterial({ color: "red", });
-    bar = new THREE.Mesh(barGeo, barMat);
-    bar.position.y = -PLANEHEIGHT/2 +4;//Para iniciar,
-    bar.position.z = BARWIDTH/2;
-    bar.name = 'bar';
-
-    this.bordas(bar, 0xFFFFFF);
-
-    scene.add(bar);
-}
-
-
-function checkKey(evt) {
-  const key = evt.key;
-  const keyCode = evt.keyCode;
-
-  if (key == 'ArrowRight' || keyCode == 39){
-      var barr = scene.getObjectByName('bar');
-
-      if (barr.position.x <= ENDBARMOVE) {
-        barr.position.x += SPEEDMOVEBAR;
-      }
-  }
-
-  else if (key == 'ArrowLeft' || keyCode == 37){
-      var barr = scene.getObjectByName('bar');
-
-      if (barr.position.x >= BEGINBARMOVE) {
-        barr.position.x -= SPEEDMOVEBAR;
-      }
-  }
-}
-
-var createAPlane = function () {
-    var geometry = new THREE.PlaneGeometry( PLANEWIDTH, PLANEHEIGHT );
-    var material = new THREE.MeshBasicMaterial( {color: "gray"} );
-    plane = new THREE.Mesh( geometry, material );
-    scene.add( plane );
-
-};
-
-var createASphere = function()
-{
-  var geometry = new THREE.SphereGeometry( BALLRADIUS, 32, 32 );
-  var material = new THREE.MeshBasicMaterial( {color: 0x080ff});
-  sphere = new THREE.Mesh( geometry, material );
-  sphere.position.y = -2;
-  this.bordas(sphere, 0xFFFFFF);
-  scene.add( sphere );
-};
-
-function onWindowResize()
-{
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth , window.innerHeight);
-
-    plane.setSize(window.innerWidth , window.innerHeight);
-}
-
-function createSideWalls(){
-  var geometrySides = new THREE.BoxGeometry(CUBEWIDTH/3,PLANEHEIGHT,PLANEWIDTH/4);
-  var geometryUP = new THREE.BoxGeometry(PLANEWIDTH + 2*CUBEWIDTH/3,CUBEWIDTH/3,PLANEWIDTH/4);
-  var material = new THREE.MeshBasicMaterial({color: "green"});
-  rigthWall = new THREE.Mesh(geometrySides,material);
-  upWall = new THREE.Mesh(geometryUP,material);
-  leftWall = new THREE.Mesh(geometrySides,material);
-
-  upWall.position.y = PLANEHEIGHT/2;
-  leftWall.position.x = PLANEWIDTH/2 + (CUBEWIDTH/3)/2;
-  rigthWall.position.x = -PLANEWIDTH/2 - (CUBEWIDTH/3)/2;
-
-  scene.add(rigthWall);
-  scene.add(leftWall);
-  scene.add(upWall);
-  this.bordas(rigthWall, 0xFFFFFF);
-  this.bordas(upWall, 0xFFFFFF);
-  this.bordas(leftWall, 0xFFFFFF);
-
-
-
 }
 
 
