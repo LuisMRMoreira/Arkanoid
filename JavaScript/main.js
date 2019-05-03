@@ -150,12 +150,18 @@ function tratamentoDeColisoes()
   //Colisão nas barra de movimento laterais
   //
 
-  // if ((ball.position.y-BALLRADIUS).toFixed(1) == (bar.position.y + BARHEIGHT/2).toFixed(1)) {
-  //   if ((ball.position.x+BALLRADIUS).toFixed(1)>=(bar.position.x - BARWIDTH/2).toFixed(1) && (ball.position.x+BALLRADIUS).toFixed(1) <= (bar.position.x + BARWIDTH/2).toFixed(1)) {
+  if ((ball.position.y - BALLRADIUS).toFixed(1) == (bar.position.y + BARHEIGHT/2).toFixed(1)) {
+    Yincremento = -Yincremento;
+    if ((ball.position.x+BALLRADIUS).toFixed(1)>=(bar.position.x - BARWIDTH/2).toFixed(1) && (ball.position.x+BALLRADIUS).toFixed(1) <= (bar.position.x + BARWIDTH/2).toFixed(1)) {
+      //Xincremento = -Xincremento;
+    }
+  }
+
+  // if ((ball.position.y - BALLRADIUS).toFixed(1) == (bar.position.y + BARHEIGHT/2).toFixed(1) &&
+  // (ball.position.x).toFixed(1) <= (bar.position.x - BARWIDTH/2 + BALLRADIUS ).toFixed(1) && 
+  // (ball.position.x).toFixed(1) >= (bar.position.x + BARWIDTH/2 - BALLRADIUS).toFixed(1)) {
+  //     Yincremento = -Yincremento;
   //     Xincremento = -Xincremento;
-  //   }
-
-
   // }
 
 
@@ -163,43 +169,162 @@ function tratamentoDeColisoes()
   
   
   //
-  //Colisão nos cubos na barra de cubos
+  //Colisão nos cubos na barra de cubos PROVAVELMENTE NÃO VAI FUNCIONAR QUANDO A BARRA DE CUBOS PASSAR O Y = 0
   //
-  // for (let i = 0; i < collidableObjects.length; i++) {
+  for (let i = 0; i < collidableObjects.length; i++) {
     
-  //   if ((collidableObjects[i].position.x + CUBEWIDTH/2).toFixed(1) == (ball.position.x+BALLRADIUS).toFixed(1) || (collidableObjects[i].position.x - CUBEWIDTH/2).toFixed(1) == (ball.position.x+BALLRADIUS).toFixed(1)) {
-  //     Xincremento = -Xincremento;
-  //     break;
-  //   }
+    //Colisão com por baixo
+    // if ((ball.position.y+BALLRADIUS).toFixed(1) == (collidableObjects[i].position.y - CUBEHEIGHT/2).toFixed(1) &&
+    // Math.abs((ball.position.x).toFixed(1)) <= Math.abs((collidableObjects[i].position.x + CUBEWIDTH/2 - BALLRADIUS).toFixed(1)) && 
+    // Math.abs((ball.position.x).toFixed(1)) >= Math.abs((collidableObjects[i].position.x - CUBEWIDTH/2 + BALLRADIUS).toFixed(1)) ) {
+    //   removerBlocos(collidableObjects[i].position.x,collidableObjects[i].position.y);
+    //   Yincremento = -Yincremento;
+    //   Xincremento = -Xincremento;
+    // }
 
-  //   if ((collidableObjects[i].position.y + CUBEHEIGHT/2).toFixed(1) == (ball.position.y+BALLRADIUS).toFixed(1) || (collidableObjects[i].position.y - CUBEHEIGHT/2).toFixed(1) == (ball.position.y+BALLRADIUS).toFixed(1)) {
-  //     Yincremento = -Yincremento;
-  //     break;
-  //   }
+    /*
+    Para numeros negativos tornou-se mais complicado, uma vez que a bola, para bater num cubo, 
+    pode estar num determinado valor no x, ou seja, um valor minimo que é MENOR que o valor minimo. 
+    Para os valores negativos, isto não acontecia, uma vez que o valor minimo de colisão num cubo (de x),
+    é 
+    */
+   if (ball.position.x <= 0) {
+
+
+    if ((ball.position.y+BALLRADIUS).toFixed(1) == (collidableObjects[i].position.y - CUBEHEIGHT/2).toFixed(1) &&
+    Math.abs((ball.position.x).toFixed(1)) <= Math.abs((collidableObjects[i].position.x + CUBEWIDTH/2 - BALLRADIUS).toFixed(1)) && 
+    Math.abs((ball.position.x).toFixed(1)) >= Math.abs((collidableObjects[i].position.x - CUBEWIDTH/2 + BALLRADIUS).toFixed(1)) ) {
+      removerBlocos(-collidableObjects[i].position.x,collidableObjects[i].position.y);
+      Yincremento = -Yincremento;
+      //Xincremento = -Xincremento;
+    }
+
+    // if ((ball.position.y+BALLRADIUS).toFixed(1) == (collidableObjects[i].position.y - CUBEHEIGHT/2).toFixed(1) &&
+    // (ball.position.x+BALLRADIUS).toFixed(1) <= (collidableObjects[i].position.x + CUBEWIDTH/2).toFixed(1) && 
+    // (ball.position.x+BALLRADIUS).toFixed(1) >= (collidableObjects[i].position.x - CUBEWIDTH/2).toFixed(1) ) {
+    //   Yincremento = -Yincremento;
+    //   Xincremento = -Xincremento;
+    //   removerBlocos(collidableObjects[i].position.x,collidableObjects[i].position.y);
+    // }
+
+    //Colisão do lado direito
+    if ((ball.position.x-BALLRADIUS).toFixed(1) == (collidableObjects[i].position.x + CUBEWIDTH/2).toFixed(1) &&
+    (ball.position.y+BALLRADIUS).toFixed(1) <= (collidableObjects[i].position.y + CUBEHEIGHT/2).toFixed(1) && 
+    (ball.position.y+BALLRADIUS).toFixed(1) >= (collidableObjects[i].position.y - CUBEHEIGHT/2).toFixed(1) ) {
+      Yincremento = -Yincremento;
+      //Xincremento = -Xincremento;
+      removerBlocos(collidableObjects[i].position.x,collidableObjects[i].position.y);
+    }
+
+    //Colisão do lado esquerdo
+    if ((ball.position.x+BALLRADIUS).toFixed(1) == (collidableObjects[i].position.x - CUBEWIDTH/2).toFixed(1) &&
+    (ball.position.y+BALLRADIUS).toFixed(1) <= (collidableObjects[i].position.y + CUBEHEIGHT/2).toFixed(1) && 
+    (ball.position.y+BALLRADIUS).toFixed(1) >= (collidableObjects[i].position.y - CUBEHEIGHT/2).toFixed(1) ) {
+      Yincremento = -Yincremento;
+      //Xincremento = -Xincremento;
+      removerBlocos(collidableObjects[i].position.x,collidableObjects[i].position.y);
+    }
+
+    //Colisão com por cima
+    if ((ball.position.y-BALLRADIUS).toFixed(1) == (collidableObjects[i].position.y + CUBEHEIGHT/2).toFixed(1) &&
+    (ball.position.x+BALLRADIUS).toFixed(1) <= (collidableObjects[i].position.x + CUBEWIDTH/2).toFixed(1) && 
+    (ball.position.x+BALLRADIUS).toFixed(1) >= (collidableObjects[i].position.x - CUBEWIDTH/2).toFixed(1) ) {
+      Yincremento = -Yincremento;
+      //Xincremento = -Xincremento;
+      removerBlocos(collidableObjects[i].position.x,collidableObjects[i].position.y);
+    }
+
     
-  // }  
+  } else
+  {
+    if ((ball.position.y+BALLRADIUS).toFixed(1) == (collidableObjects[i].position.y - CUBEHEIGHT/2).toFixed(1) &&
+    (ball.position.x).toFixed(1) <= (collidableObjects[i].position.x + CUBEWIDTH/2 - BALLRADIUS).toFixed(1) && 
+    (ball.position.x).toFixed(1) >= (collidableObjects[i].position.x - CUBEWIDTH/2 + BALLRADIUS).toFixed(1) ) {
+      removerBlocos(collidableObjects[i].position.x,collidableObjects[i].position.y);
+      Yincremento = -Yincremento;
+      //Xincremento = -Xincremento;
+    }
+
+    // if ((ball.position.y+BALLRADIUS).toFixed(1) == (collidableObjects[i].position.y - CUBEHEIGHT/2).toFixed(1) &&
+    // (ball.position.x+BALLRADIUS).toFixed(1) <= (collidableObjects[i].position.x + CUBEWIDTH/2).toFixed(1) && 
+    // (ball.position.x+BALLRADIUS).toFixed(1) >= (collidableObjects[i].position.x - CUBEWIDTH/2).toFixed(1) ) {
+    //   Yincremento = -Yincremento;
+    //   Xincremento = -Xincremento;
+    //   removerBlocos(collidableObjects[i].position.x,collidableObjects[i].position.y);
+    // }
+
+    //Colisão do lado direito
+    if ((ball.position.x-BALLRADIUS).toFixed(1) == (collidableObjects[i].position.x + CUBEWIDTH/2).toFixed(1) &&
+    (ball.position.y+BALLRADIUS).toFixed(1) <= (collidableObjects[i].position.y + CUBEHEIGHT/2).toFixed(1) && 
+    (ball.position.y+BALLRADIUS).toFixed(1) >= (collidableObjects[i].position.y - CUBEHEIGHT/2).toFixed(1) ) {
+      Yincremento = -Yincremento;
+      //Xincremento = -Xincremento;
+      removerBlocos(collidableObjects[i].position.x,collidableObjects[i].position.y);
+    }
+
+    //Colisão do lado esquerdo
+    if ((ball.position.x+BALLRADIUS).toFixed(1) == (collidableObjects[i].position.x - CUBEWIDTH/2).toFixed(1) &&
+    (ball.position.y+BALLRADIUS).toFixed(1) <= (collidableObjects[i].position.y + CUBEHEIGHT/2).toFixed(1) && 
+    (ball.position.y+BALLRADIUS).toFixed(1) >= (collidableObjects[i].position.y - CUBEHEIGHT/2).toFixed(1) ) {
+      Yincremento = -Yincremento;
+      //Xincremento = -Xincremento;
+      removerBlocos(collidableObjects[i].position.x,collidableObjects[i].position.y);
+    }
+
+    //Colisão com por cima
+    if ((ball.position.y-BALLRADIUS).toFixed(1) == (collidableObjects[i].position.y + CUBEHEIGHT/2).toFixed(1) &&
+    (ball.position.x+BALLRADIUS).toFixed(1) <= (collidableObjects[i].position.x + CUBEWIDTH/2).toFixed(1) && 
+    (ball.position.x+BALLRADIUS).toFixed(1) >= (collidableObjects[i].position.x - CUBEWIDTH/2).toFixed(1) ) {
+      Yincremento = -Yincremento;
+      //Xincremento = -Xincremento;
+      removerBlocos(collidableObjects[i].position.x,collidableObjects[i].position.y);
+    }
+
+    
+  }
+
+
+  } 
+  
+  
 
 
 
-  //Incremento do valor após possivelmente se ter calculado acolisão
+   //}
+  
+
+
+  //Incremento do valor após possivelmente se ter calculado acolisão (movimento da bola)
   ball.position.x += Xincremento;
   ball.position.y += Yincremento;
 }
 
 
-
-function roundNumber(num, scale) {
-  if(!("" + num).includes("e")) {
-    return +(Math.round(num + "e+" + scale)  + "e-" + scale);
-  } else {
-    var arr = ("" + num).split("e");
-    var sig = ""
-    if(+arr[1] + scale > 0) {
-      sig = "+";
+function removerBlocos(Xcoord,Ycoord)
+{  
+  for (let i = 0; i < collidableObjects.length; i++) {
+    if (collidableObjects[i].name == "box" + Xcoord.toString() + "," + Ycoord.toString()) {
+      scene.remove(scene.getObjectByName(collidableObjects[i].name));
+      collidableObjects.splice(i,1);
     }
-    return +(Math.round(+arr[0] + "e" + sig + (+arr[1] + scale)) + "e-" + scale);
+    
   }
 }
+
+
+
+// function roundNumber(num, scale) {
+//   if(!("" + num).includes("e")) {
+//     return +(Math.round(num + "e+" + scale)  + "e-" + scale);
+//   } else {
+//     var arr = ("" + num).split("e");
+//     var sig = ""
+//     if(+arr[1] + scale > 0) {
+//       sig = "+";
+//     }
+//     return +(Math.round(+arr[0] + "e" + sig + (+arr[1] + scale)) + "e-" + scale);
+//   }
+// }
 
 
 
@@ -285,6 +410,7 @@ var geometry = new THREE.SphereGeometry( BALLRADIUS, 20, 20 );
 var material = new THREE.MeshBasicMaterial( {color: 0x080ff});
 ball = new THREE.Mesh( geometry, material );
 ball.position.y = -2;
+ball.position.x = -5;
 this.bordas(ball, 0xFFFFFF);
 scene.add( ball );
 };
