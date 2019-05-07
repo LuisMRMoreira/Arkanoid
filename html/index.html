@@ -1,21 +1,34 @@
 <!DOCTYPE html>
-<html>
-<head>
-    <script src="../JavaScript/three.js"></script>
-    <title>Arkanoid</title>
-    <style>
-        body {
-            margin: 0;
-        }
+<html lang='pt'>
+	<head>
+		<meta charset="utf-8">
+		<title>localhost</title>
+		<style>
+			body
+			{
+				margin: 0;
+				margin: 0px;
+				overflow: hidden;
+			}
 
-        canvas {
-            width: 100%;
-            height: 100%
-        }
-    </style>
-</head>
-<body>
-    
-    <script src="../JavaScript/main.js"></script>
-</body>
+			* {	cursor: none;	}
+
+			#container
+			{
+				box-sizing: border-box;
+				left: 0;
+				margin: 0;
+				position: absolute;
+				top: 0;
+				height: 100%;
+				width: 100%;
+			}
+		</style>
+		<script src="../JavaScript/three.js"></script>
+		<script src="../JavaScript/main.js"></script>
+	</head>
+
+	<body>
+		<div id="container"></div>
+	</body>
 </html>

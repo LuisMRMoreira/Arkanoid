@@ -1,509 +1,433 @@
-﻿//Tamanhos do plano de fundo (ainda não consegui fazer uma relação entre os tamanhos e a camara ao usar o window.innerWidth e window.innerHeight. Tentei fazer uma função chamada cameraResize)
-//15 e 20 apenas são valores de teste
-var PLANEWIDTH = 15;//window.innerWidth;
-var PLANEHEIGHT = 20;//window.innerHeight;
+'use strict';
 
-//Tamanho dos cubos da barra
-/*tem de se chama o CUBEWIDTH em vez do PLANEHEIGTH porque o PLANEWIDTH é sempre mais pequeno que o PLANEWIDTH, dessa forma, caso se 
-fize-se a divisão normal (var CUBEWIDTH =  PLANEWIDTH/30; var CUBEHEIGHT = PLANEHEIGTH/25;), os cubos iriam ficam na vertial 
-(maiores na vertical do que na horizaontal). Por outro lado, caso se troca-se o valor 
-(var CUBEWIDTH =  PLANEHEIGTH/25; var CUBEHEIGHT = PLANEWIDTH/30;), o CUBEWIDTH deixava de ser multiplo do PLANEWIDTH e não iria desenhar 
-desde uma ponta à outra do plano. Da forma que está implementado, garantimos que o cubo, é sempre maior na horizontal do que na vertical.*/
-var CUBEWIDTH =  PLANEWIDTH/8;//Vai ter 12 cubos em cada linha
-var CUBEHEIGHT = CUBEWIDTH/3;//2 pareceu-me o melhor valor
+const PLANEWIDTH  = 15;
+const PLANEHEIGHT = 20;
 
-//Tamanho da Barra que se movimeta no fundo
-var BARWIDTH = PLANEWIDTH/7;
-var BARHEIGHT = PLANEHEIGHT/60;
-var BARDEPTH = PLANEHEIGHT/60;
-//Velocidade a que a barra se movimenta
-var SPEEDMOVEBAR = PLANEWIDTH*0.03; // aumenta-se o 0.01 para aumentar a velocidade
+const DEPTH = PLANEWIDTH / 32;
 
-//Limites do movimento da Barra
-var BEGINBARMOVE = -PLANEWIDTH/2 + BARWIDTH/2; //Limite da esquerda
-var ENDBARMOVE = PLANEWIDTH/2 - BARWIDTH/2; //Limite da direita
+const CUBEWIDTH   = PLANEWIDTH  / 8;
+const CUBEHEIGHT  = CUBEWIDTH   / 3;
 
-//Limites da barra de cubos
-var BEGINCUBELINE = -PLANEWIDTH/2 + CUBEWIDTH/2; //Limite da esquerda
-var ENDCUBELINE = PLANEWIDTH/2 - CUBEWIDTH/2; //Limite da direita
+const BARWIDTH    = PLANEWIDTH  / 7;
+const BARHEIGHT   = PLANEHEIGHT / 60;
 
-//Define quantas linhas a barra de cubos vai ter (útil para subir de nível)
-var NUMLINHAS = 5;
+const BOTTOM_Y = -PLANEHEIGHT/2 + 2.5;
 
-//Limite vertical da barra de cubos
-var BEGINDRAWLINES = PLANEHEIGHT/2 - 5 * CUBEHEIGHT; //Começa a escrever a partir da linha 5 a contar desde o cimo do plano. 5 pareceu-me i valor indicado
-var ENDDRAWLINES = BEGINDRAWLINES - NUMLINHAS * CUBEHEIGHT;//Limite inferior da barra de cubos na horizontal (eixo do y).
+const SPEEDMOVEBAR = PLANEWIDTH * 0.03;
+const MOUSE_SENSITIVITY = 1.3;
+
+// Limite do movimento da Barra na esquerda
+const BEGINBARMOVE = -PLANEWIDTH / 2 + BARWIDTH / 2 + SPEEDMOVEBAR;
+// Limite do movimento da Barra na direita
+const ENDBARMOVE   =  PLANEWIDTH / 2 - BARWIDTH / 2 - SPEEDMOVEBAR;
+
+// Limites da barra de cubos
+const BEGINCUBELINE  = -PLANEWIDTH / 2 + CUBEWIDTH / 2; //Limite da esquerda
+const ENDCUBELINE    =  PLANEWIDTH / 2 - CUBEWIDTH / 2; //Limite da direita
+
+
+// Define quantas linhas a barra de cubos vai ter (útil para subir de nível)
+const NUMLINHAS = 5;
+
+// Começa a escrever a partir da linha 5
+const BEGINDRAWLINES  =  PLANEHEIGHT / 2 - 5 * CUBEHEIGHT;
+const ENDDRAWLINES    =  BEGINDRAWLINES - NUMLINHAS * CUBEHEIGHT;
 
 //Tamanho da bola
-var BALLRADIUS = PLANEWIDTH/40;
+const BALLRADIUS = PLANEWIDTH / 80;
 
-//Tabela de cores usadas para pintar os blocos aleatoriamente
-var pallete = [
-  [0xF2DC00, 0x00CADB, 0xCC0000, 0x009C0B, 0x725000],
-  [0x9EDF60, 0x42A2C7, 0xF4DBDB, 0x26418B, 0x020922],
-  [0xFF4ADC, 0xDFB14F, 0xEFF17A, 0x78CB6D, 0x18F7FF],
+const INCREMENTO_X = 0.1; // caso se mude o valor de 0.1 para outro, não vai functionar no calculo de colisões
+const INCREMENTO_Y = 0.1;
+
+
+const PALLETE = [
+  0xF2DC00, 0x00CADB, 0xCC0000, 0x009C0B, 0x725000,
+  0x9EDF60, 0x42A2C7, 0xF4DBDB, 0x26418B, 0x020922,
+  0xFF4ADC, 0xDFB14F, 0xEFF17A, 0x78CB6D, 0x18F7FF,
 ];
 
-//"Velocidade" e direção da bola. Em cada "iteração" do render, anda 0.5 no referencial
-var Xincremento = 0.1; // caso se mude o valor de 0.1 para outro, não vai functionar no calculo de colisões
-var Yincremento = 0.1;
-
-//Profundidade das paredes laterais
-var SIDEWALLSDEPTH = CUBEWIDTH/4;
-
-
-var bolaCoordenadasBase = {x: 0, y: -2};
 
 var scene;
 var camera;
 var controls
 var renderer;
 
+var collidableObjects = [];
+var bar
+var ball;
+var ballVector = {x: 0, y: -INCREMENTO_Y};
 
 var plane;
-var collidableObjects = []; // An array of collidable objects used later
-var bar;
-var ball;
 var leftWall;
-var rigthWall;
+var rightWall;
 var upWall;
-var qtObjects = 0;
 
+var mouseX = 0;
+var lifes = 3;
 
-
-var init = function () {
-
+function init()
+{
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.x = 0;
+    camera.position.y = 0;//20;
+    camera.position.z = 30;
+    camera.lookAt( scene.position );
 
     renderer = new THREE.WebGLRenderer();
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
     
+
     document.addEventListener('keydown', checkKey);
-    window.addEventListener('resize',onWindowResize,false);
+    document.addEventListener('mousemove', mouseMove);
+    window.addEventListener('wheel', updateCamera);
+    window.addEventListener('resize',onWindowResize);
     
-    //this.createLight();
     
-    this.criarTodosOsObjetos();
-    this.ref();
-    this.cameraResize();
+    createCubos();
+    createMoveBar();
+    createBall();
 
-    //camera.position.x = -30;
-    //camera.position.z = 10;
-    //camera.rotation.y = -45 * Math.PI / 180; //45 * Math.PI / 180;//0 * Math.PI / 180;
+    createSideWalls();
+    createBackWall();
 
-    this.render();
-};
+    createHearts();
+    showReferencialXYZ();
 
-var cameraResize = function () {
-  camera.position.z = PLANEWIDTH/PLANEHEIGHT*37;//Math.pow(PLANEWIDTH); //PLANEWIDTH/PLANEHEIGHT;
-  camera.position.x = 0;//50 //0
-  //camera.position.y = -15; 
+    // para as walls que usam MeshPhongMaterial
+    addLights();
 
-  //camera.rotation.x = 35* Math.PI / 180;
-};
+    render();
+}
 
-var render = function () {
+
+function render()
+{
+    if(collidableObjects.length > 0)
+    {
+        // verifica colisão lateral
+        if (ball.position.x+BALLRADIUS > PLANEWIDTH/2 - SPEEDMOVEBAR/2
+            || ball.position.x-BALLRADIUS < -PLANEWIDTH/2 + SPEEDMOVEBAR/2)
+        {
+            ballVector.x = -ballVector.x;
+        }
+
+
+        // verifica colisão com barreira
+        if (ball.position.y-BALLRADIUS < BEGINDRAWLINES
+            && ball.position.y+BALLRADIUS > ENDDRAWLINES)
+        {    removerCubos();    }
+
+
+        // verifica colisão com barra
+        if (ball.position.y > BOTTOM_Y-INCREMENTO_Y
+            && ball.position.y < BOTTOM_Y+INCREMENTO_Y)
+        {    checkBarCollision();    }
+        // verifica colisão com o topo
+        else if(ball.position.y > PLANEHEIGHT/2 - CUBEWIDTH / 6)
+        {    ballVector.y = -ballVector.y;    }
+        else if(ball.position.y < BOTTOM_Y-INCREMENTO_Y)
+        {  /* loseRound(); */ }
+
+
+        ball.position.x += ballVector.x;
+        ball.position.y += ballVector.y;
+    }
+    
+
     requestAnimationFrame(render);
-
-    //this.animateMoveBar();
-    this.tratamentoDeColisoes();
-
     renderer.render(scene, camera);
-};
-
-function tratamentoDeColisoes()
-{
-  /*O javaScript usa muitas casas decimais (grande precisão). o incremento neste caso é só de 0.1, ou seja entre as várias posições, 
-  só queremos compara os dois primeiros digitos da parte decimal, daí fazermos um arredondamento para duas casas decimais (Math.round)
-  
-  EDIT 1: O Math.round, ao arredomdar, não funcionava, porque saltava valores 6,5 => 7, o que não é o que se quer. Para se resolver isso,
-   usou.se o toFixed(1), que mostra apenas uma casa decimal
-   
-  */
-
-  /*Caso a posição da bola seja igual à do limite do plano (x = PLANEWIDTH/2 ou x = -PLANEWIDTH/2), o valor incrementado na posição 
-  da bolta tem de ser o inverso do que estava em vigor. Por exemplo, caso a bola esteja a movimentar-se na horizontal a 
-  uma "velocidade" (incremento) de 0.1, quando a sua posição coincida com o limite do plano, a "velocidade" passa a ser de -0.1, 
-  ou seja, a cada interceção no x, o incremento é o negativo do que estava a ser incrementado (++ = +, -+ = -, -- = +)  
-  */
-
-
-  //
-  //Colisão nas Paredes laterais
-  //
-  // Colisão com as paredes laterais
-  if ((ball.position.x+BALLRADIUS).toFixed(1) ==(PLANEWIDTH/2) || (ball.position.x-BALLRADIUS).toFixed(1) == (-PLANEWIDTH/2)) //ERRO!!!! Pelos vistos -10 = -6
-  {
-    Xincremento = -Xincremento;
-  }    
-    
-  // Colsão com a parede de cima e o fundo
-  if ((ball.position.y+BALLRADIUS).toFixed(1) == (PLANEHEIGHT/2) || (ball.position.y-BALLRADIUS).toFixed(1) == (-PLANEHEIGHT/2)) //Math.round(ball.position.y) == Math.round(PLANEHEIGHT/2)
-  {
-    Yincremento = -Yincremento;
-  }
-
-
-  //
-  //Colisão nas barra de movimento laterais
-  //
-
-  if ((ball.position.y - BALLRADIUS).toFixed(1) == (bar.position.y + BARHEIGHT/2).toFixed(1)) {
-    Yincremento = -Yincremento;
-    if ((ball.position.x+BALLRADIUS).toFixed(1)>=(bar.position.x - BARWIDTH/2).toFixed(1) && (ball.position.x+BALLRADIUS).toFixed(1) <= (bar.position.x + BARWIDTH/2).toFixed(1)) {
-      //Xincremento = -Xincremento;
-    }
-  }
-
-  // if ((ball.position.y - BALLRADIUS).toFixed(1) == (bar.position.y + BARHEIGHT/2).toFixed(1) &&
-  // (ball.position.x).toFixed(1) <= (bar.position.x - BARWIDTH/2 + BALLRADIUS ).toFixed(1) && 
-  // (ball.position.x).toFixed(1) >= (bar.position.x + BARWIDTH/2 - BALLRADIUS).toFixed(1)) {
-  //     Yincremento = -Yincremento;
-  //     Xincremento = -Xincremento;
-  // }
-
-
-
-  
-  
-  //
-  //Colisão nos cubos na barra de cubos PROVAVELMENTE NÃO VAI FUNCIONAR QUANDO A BARRA DE CUBOS PASSAR O Y = 0
-  //
-  for (let i = 0; i < collidableObjects.length; i++) {
-    
-    //Colisão com por baixo
-    // if ((ball.position.y+BALLRADIUS).toFixed(1) == (collidableObjects[i].position.y - CUBEHEIGHT/2).toFixed(1) &&
-    // Math.abs((ball.position.x).toFixed(1)) <= Math.abs((collidableObjects[i].position.x + CUBEWIDTH/2 - BALLRADIUS).toFixed(1)) && 
-    // Math.abs((ball.position.x).toFixed(1)) >= Math.abs((collidableObjects[i].position.x - CUBEWIDTH/2 + BALLRADIUS).toFixed(1)) ) {
-    //   removerBlocos(collidableObjects[i].position.x,collidableObjects[i].position.y);
-    //   Yincremento = -Yincremento;
-    //   Xincremento = -Xincremento;
-    // }
-
-    /*
-    Para numeros negativos tornou-se mais complicado, uma vez que a bola, para bater num cubo, 
-    pode estar num determinado valor no x, ou seja, um valor minimo que é MENOR que o valor minimo. 
-    Para os valores negativos, isto não acontecia, uma vez que o valor minimo de colisão num cubo (de x),
-    é 
-    */
-   if (ball.position.x <= 0) {
-
-
-    if ((ball.position.y+BALLRADIUS).toFixed(1) == (collidableObjects[i].position.y - CUBEHEIGHT/2).toFixed(1) &&
-    Math.abs((ball.position.x).toFixed(1)) <= Math.abs((collidableObjects[i].position.x + CUBEWIDTH/2 - BALLRADIUS).toFixed(1)) && 
-    Math.abs((ball.position.x).toFixed(1)) >= Math.abs((collidableObjects[i].position.x - CUBEWIDTH/2 + BALLRADIUS).toFixed(1)) ) {
-      removerBlocos(-collidableObjects[i].position.x,collidableObjects[i].position.y);
-      Yincremento = -Yincremento;
-      //Xincremento = -Xincremento;
-    }
-
-    // if ((ball.position.y+BALLRADIUS).toFixed(1) == (collidableObjects[i].position.y - CUBEHEIGHT/2).toFixed(1) &&
-    // (ball.position.x+BALLRADIUS).toFixed(1) <= (collidableObjects[i].position.x + CUBEWIDTH/2).toFixed(1) && 
-    // (ball.position.x+BALLRADIUS).toFixed(1) >= (collidableObjects[i].position.x - CUBEWIDTH/2).toFixed(1) ) {
-    //   Yincremento = -Yincremento;
-    //   Xincremento = -Xincremento;
-    //   removerBlocos(collidableObjects[i].position.x,collidableObjects[i].position.y);
-    // }
-
-    //Colisão do lado direito
-    if ((ball.position.x-BALLRADIUS).toFixed(1) == (collidableObjects[i].position.x + CUBEWIDTH/2).toFixed(1) &&
-    (ball.position.y+BALLRADIUS).toFixed(1) <= (collidableObjects[i].position.y + CUBEHEIGHT/2).toFixed(1) && 
-    (ball.position.y+BALLRADIUS).toFixed(1) >= (collidableObjects[i].position.y - CUBEHEIGHT/2).toFixed(1) ) {
-      Yincremento = -Yincremento;
-      //Xincremento = -Xincremento;
-      removerBlocos(collidableObjects[i].position.x,collidableObjects[i].position.y);
-    }
-
-    //Colisão do lado esquerdo
-    if ((ball.position.x+BALLRADIUS).toFixed(1) == (collidableObjects[i].position.x - CUBEWIDTH/2).toFixed(1) &&
-    (ball.position.y+BALLRADIUS).toFixed(1) <= (collidableObjects[i].position.y + CUBEHEIGHT/2).toFixed(1) && 
-    (ball.position.y+BALLRADIUS).toFixed(1) >= (collidableObjects[i].position.y - CUBEHEIGHT/2).toFixed(1) ) {
-      Yincremento = -Yincremento;
-      //Xincremento = -Xincremento;
-      removerBlocos(collidableObjects[i].position.x,collidableObjects[i].position.y);
-    }
-
-    //Colisão com por cima
-    if ((ball.position.y-BALLRADIUS).toFixed(1) == (collidableObjects[i].position.y + CUBEHEIGHT/2).toFixed(1) &&
-    (ball.position.x+BALLRADIUS).toFixed(1) <= (collidableObjects[i].position.x + CUBEWIDTH/2).toFixed(1) && 
-    (ball.position.x+BALLRADIUS).toFixed(1) >= (collidableObjects[i].position.x - CUBEWIDTH/2).toFixed(1) ) {
-      Yincremento = -Yincremento;
-      //Xincremento = -Xincremento;
-      removerBlocos(collidableObjects[i].position.x,collidableObjects[i].position.y);
-    }
-
-    
-  } else
-  {
-    if ((ball.position.y+BALLRADIUS).toFixed(1) == (collidableObjects[i].position.y - CUBEHEIGHT/2).toFixed(1) &&
-    (ball.position.x).toFixed(1) <= (collidableObjects[i].position.x + CUBEWIDTH/2 - BALLRADIUS).toFixed(1) && 
-    (ball.position.x).toFixed(1) >= (collidableObjects[i].position.x - CUBEWIDTH/2 + BALLRADIUS).toFixed(1) ) {
-      removerBlocos(collidableObjects[i].position.x,collidableObjects[i].position.y);
-      Yincremento = -Yincremento;
-      //Xincremento = -Xincremento;
-    }
-
-    // if ((ball.position.y+BALLRADIUS).toFixed(1) == (collidableObjects[i].position.y - CUBEHEIGHT/2).toFixed(1) &&
-    // (ball.position.x+BALLRADIUS).toFixed(1) <= (collidableObjects[i].position.x + CUBEWIDTH/2).toFixed(1) && 
-    // (ball.position.x+BALLRADIUS).toFixed(1) >= (collidableObjects[i].position.x - CUBEWIDTH/2).toFixed(1) ) {
-    //   Yincremento = -Yincremento;
-    //   Xincremento = -Xincremento;
-    //   removerBlocos(collidableObjects[i].position.x,collidableObjects[i].position.y);
-    // }
-
-    //Colisão do lado direito
-    if ((ball.position.x-BALLRADIUS).toFixed(1) == (collidableObjects[i].position.x + CUBEWIDTH/2).toFixed(1) &&
-    (ball.position.y+BALLRADIUS).toFixed(1) <= (collidableObjects[i].position.y + CUBEHEIGHT/2).toFixed(1) && 
-    (ball.position.y+BALLRADIUS).toFixed(1) >= (collidableObjects[i].position.y - CUBEHEIGHT/2).toFixed(1) ) {
-      Yincremento = -Yincremento;
-      //Xincremento = -Xincremento;
-      removerBlocos(collidableObjects[i].position.x,collidableObjects[i].position.y);
-    }
-
-    //Colisão do lado esquerdo
-    if ((ball.position.x+BALLRADIUS).toFixed(1) == (collidableObjects[i].position.x - CUBEWIDTH/2).toFixed(1) &&
-    (ball.position.y+BALLRADIUS).toFixed(1) <= (collidableObjects[i].position.y + CUBEHEIGHT/2).toFixed(1) && 
-    (ball.position.y+BALLRADIUS).toFixed(1) >= (collidableObjects[i].position.y - CUBEHEIGHT/2).toFixed(1) ) {
-      Yincremento = -Yincremento;
-      //Xincremento = -Xincremento;
-      removerBlocos(collidableObjects[i].position.x,collidableObjects[i].position.y);
-    }
-
-    //Colisão com por cima
-    if ((ball.position.y-BALLRADIUS).toFixed(1) == (collidableObjects[i].position.y + CUBEHEIGHT/2).toFixed(1) &&
-    (ball.position.x+BALLRADIUS).toFixed(1) <= (collidableObjects[i].position.x + CUBEWIDTH/2).toFixed(1) && 
-    (ball.position.x+BALLRADIUS).toFixed(1) >= (collidableObjects[i].position.x - CUBEWIDTH/2).toFixed(1) ) {
-      Yincremento = -Yincremento;
-      //Xincremento = -Xincremento;
-      removerBlocos(collidableObjects[i].position.x,collidableObjects[i].position.y);
-    }
-
-    
-  }
-
-
-  } 
-  
-  
-
-
-
-   //}
-  
-
-
-  //Incremento do valor após possivelmente se ter calculado acolisão (movimento da bola)
-  ball.position.x += Xincremento;
-  ball.position.y += Yincremento;
 }
 
 
-function removerBlocos(Xcoord,Ycoord)
-{  
-  for (let i = 0; i < collidableObjects.length; i++) {
-    if (collidableObjects[i].name == "box" + Xcoord.toString() + "," + Ycoord.toString()) {
-      scene.remove(scene.getObjectByName(collidableObjects[i].name));
-      collidableObjects.splice(i,1);
-    }
-    
-  }
-}
-
-
-
-// function roundNumber(num, scale) {
-//   if(!("" + num).includes("e")) {
-//     return +(Math.round(num + "e+" + scale)  + "e-" + scale);
-//   } else {
-//     var arr = ("" + num).split("e");
-//     var sig = ""
-//     if(+arr[1] + scale > 0) {
-//       sig = "+";
-//     }
-//     return +(Math.round(+arr[0] + "e" + sig + (+arr[1] + scale)) + "e-" + scale);
-//   }
-// }
-
-
-
-
-
-//referencial x y z
-var ref = function () 
+function showReferencialXYZ()
 {
-    var axesHelper = new THREE.AxesHelper( 20 );
+    const axesHelper = new THREE.AxesHelper( 20 );
     scene.add( axesHelper );
 }
 
-function checkKey(evt) {
-  const key = evt.key;
-  const keyCode = evt.keyCode;
 
-  if (key == 'ArrowRight' || keyCode == 39){
-      var barr = scene.getObjectByName('bar');
+function checkBarCollision()
+{
+    const currentPos = ball.position.x;
+    const barLimits = {
+        left:  bar.position.x - BARWIDTH/2,
+        right: bar.position.x + BARWIDTH/2
+    };
 
-      if (barr.position.x <= ENDBARMOVE) {
-        barr.position.x += SPEEDMOVEBAR;
-      }
-  }
-  else if (key == 'ArrowLeft' || keyCode == 37){
-      var barr = scene.getObjectByName('bar');
-
-      if (barr.position.x >= BEGINBARMOVE) {
-        barr.position.x -= SPEEDMOVEBAR;
-      }
-  }
-  
+    if (currentPos >= barLimits.left && currentPos <= barLimits.right)
+    {
+        ballVector.x = (currentPos - bar.position.x) * 0.025;
+        ballVector.y = -ballVector.y;
+    }
 }
+
+
+function removerCubos()
+{
+    const ALTURA_CUBO  = CUBEHEIGHT/2;
+    const LARGURA_CUBO = CUBEWIDTH /2;
+
+    for (let i = 0; i < collidableObjects.length; i++)
+    {
+        // verifica colisão
+            // inferior
+        if((collidableObjects[i].position.y-ALTURA_CUBO < ball.position.y+BALLRADIUS 
+            // verifica colisão superior
+            && collidableObjects[i].position.y+ALTURA_CUBO > ball.position.y-BALLRADIUS)
+            // verifica que o atual bloco[i] esteja no x_alcance
+            && collidableObjects[i].position.x-LARGURA_CUBO < ball.position.x+BALLRADIUS
+            && collidableObjects[i].position.x+LARGURA_CUBO > ball.position.x-BALLRADIUS)
+        {
+            ballVector.y = -ballVector.y;
+
+            if (collidableObjects[i].name == "box" + collidableObjects[i].position.x.toString() + "," + collidableObjects[i].position.y.toString())
+            {
+                scene.remove(scene.getObjectByName(collidableObjects[i].name));
+                collidableObjects.splice(i,1);
+            }
+            break;
+        }
+
+
+        if((collidableObjects[i].position.x-LARGURA_CUBO < ball.position.x+BALLRADIUS 
+            // verifica colisão superior
+            && collidableObjects[i].position.x+LARGURA_CUBO > ball.position.x-BALLRADIUS)
+            // verifica que o atual bloco[i] esteja no x_alcance
+            && collidableObjects[i].position.y-ALTURA_CUBO < ball.position.y+BALLRADIUS
+            && collidableObjects[i].position.y+ALTURA_CUBO > ball.position.y-BALLRADIUS)
+        {
+            ballVector.x = -ballVector.x;
+
+            if (collidableObjects[i].name == "box" + collidableObjects[i].position.x.toString() + "," + collidableObjects[i].position.y.toString())
+            {
+                scene.remove(scene.getObjectByName(collidableObjects[i].name));
+                collidableObjects.splice(i,1);
+            }
+            break;
+        }
+
+    }
+}
+
+
+function createCubos()
+{
+    const cubeGeo = new THREE.BoxGeometry(CUBEWIDTH, CUBEHEIGHT, DEPTH);
+    const indexPlallet = Math.floor(Math.random() * 3);  
+
+    //Começa a desenhar na posicção 0 do z e o y e na posição negativa de metade do plano que desenhamos (que tem centro em 0)
+    //Acaba de desenhar no valor positivo do x igual a metade do plano desenhado e neste caso o y vai até 5 (0 -> 5)
+
+    // linhas
+    for (let i =  BEGINDRAWLINES ; i >= ENDDRAWLINES; i-= CUBEHEIGHT)
+    {
+        //colunas
+        for (let j = BEGINCUBELINE; j <= ENDCUBELINE; j+=CUBEWIDTH)
+        {
+            const cubeMat = new THREE.MeshBasicMaterial({color: PALLETE[Math.floor(Math.random() * (PALLETE.length))]});
+            const cube = new THREE.Mesh(cubeGeo, cubeMat);
+            cube.position.x = j;
+            cube.position.y = i;
+            cube.position.z = DEPTH;
+            cube.name = 'box' + cube.position.x.toString() + "," + cube.position.y.toString();
+            drawBordas(cube, 0x000000);
+            scene.add(cube);
+            collidableObjects.push(cube);
+        }
+    }
+}
+
+
+//Criar a barra que o utilizador vai controlar 
+function createMoveBar()
+{
+    const barGeo = new THREE.BoxGeometry(BARWIDTH, BARHEIGHT, DEPTH);
+    const barMat = new THREE.MeshPhongMaterial({ color: "red", });
+    bar = new THREE.Mesh(barGeo, barMat);
+    bar.position.y = BOTTOM_Y - BARHEIGHT / 2;
+    bar.position.z = DEPTH;
+
+    drawBordas(bar, 0xFFFFFF);
+    scene.add(bar);
+}
+
+
+function createBall()
+{
+    const ballGeo = new THREE.SphereGeometry(BALLRADIUS*2, 20, 20);
+    const ballMat = new THREE.MeshPhongMaterial( {color: "yellow"});
+    ball = new THREE.Mesh( ballGeo, ballMat );
+    ball.position.x = 0;
+    ball.position.y = 0;
+    ball.position.z = DEPTH;
+    scene.add( ball );
+}
+
+
+function createHearts()
+{
+    const shape = new THREE.Shape();
+    const x = -0.25;
+    const y = -0.5;
+
+    shape.moveTo(x + 0.25, y + 0.25);
+    shape.bezierCurveTo(x + 0.25, y + 0.25, x + 0.2, y, x, y);
+    shape.bezierCurveTo(x - 0.3, y, x - 0.3, y + 0.35, x - 0.3, y + 0.35);
+    shape.bezierCurveTo(x - 0.3, y + 0.55, x - 0.15, y + 0.77, x + 0.25, y + 0.95);
+    shape.bezierCurveTo(x + 0.6, y + 0.77, x + 0.8, y + 0.45, x + 0.8, y + 0.35);
+    shape.bezierCurveTo(x + 0.8, y + 0.35, x + 0.8, y, x + 0.5, y);
+    shape.bezierCurveTo(x + 0.35, y, x + 0.25, y + 0.25, x + 0.25, y + 0.25);
+
+    const extrudeSettings = {
+        steps: 0.2,
+        depth: 0.2,
+        bevelEnabled: true,
+        bevelThickness: 0.1,
+        bevelSize: 0.1,
+        bevelSegments: 2,
+    };
+
+    const geometry = new THREE.ExtrudeBufferGeometry(shape, extrudeSettings);
+    const material = new THREE.MeshBasicMaterial( { color: "red" } );
+
+    for(let i=1; i <= lifes; i++)
+    {
+        let mesh = new THREE.Mesh( geometry, material );
+        mesh.rotation.x = Math.PI - 0.1;
+        mesh.rotation.y = 0.1;
+        mesh.position.set(BEGINBARMOVE + i*1.5, -PLANEHEIGHT/2 + 1, DEPTH);
+        drawBordas(mesh, 0xFFFFFF);
+        mesh.name = 'heart' + i.toString();
+        scene.add(mesh);
+    }
+}
+
+
+function createSideWalls()
+{
+    const LARGURA = CUBEWIDTH / 3;
+
+    const upGeo    = new THREE.BoxGeometry(PLANEWIDTH + 2*LARGURA, LARGURA, DEPTH*2);
+    const sidesGeo = new THREE.BoxGeometry(LARGURA, PLANEHEIGHT, DEPTH*2);
+
+    const material = new THREE.MeshPhongMaterial({color: "green"});
+
+    upWall    = new THREE.Mesh(upGeo, material);
+    leftWall  = new THREE.Mesh(sidesGeo, material);
+    rightWall = new THREE.Mesh(sidesGeo, material);
+
+    leftWall.position.x   = -PLANEWIDTH / 2 - LARGURA / 2;;
+    leftWall.position.y   = 0;
+    leftWall.position.z   = DEPTH;
+
+    rightWall.position.x  =  PLANEWIDTH / 2 + LARGURA / 2;
+    rightWall.position.y  = 0;
+    rightWall.position.z  = DEPTH;
+
+    upWall.position.x    = 0;
+    upWall.position.y    = PLANEHEIGHT/2 + LARGURA/2;
+    upWall.position.z    = DEPTH;
+
+    drawBordas(rightWall, 0xFFFFFF);
+    drawBordas(upWall, 0xFFFFFF);
+    drawBordas(leftWall, 0xFFFFFF);
+
+    scene.add(rightWall);
+    scene.add(leftWall);
+    scene.add(upWall);
+}
+
+
+function createBackWall()
+{
+    const geometry = new THREE.PlaneGeometry( PLANEWIDTH, PLANEHEIGHT );
+    const material = new THREE.MeshPhongMaterial( {color: "gray"} );
+    plane = new THREE.Mesh( geometry, material );
+    scene.add( plane );
+}
+
+
+// Desenha bordas para qulquer objeto (passado como parametro) e de qualquer cor(Passado como parametro)
+function drawBordas(objeto, cor)
+{
+    const geo = new THREE.EdgesGeometry( objeto.geometry ); // or WireframeGeometry
+    const mat = new THREE.LineBasicMaterial( { color: cor, linewidth: 2 } );
+    const wireframe = new THREE.LineSegments( geo, mat );
+    objeto.add( wireframe );
+}
+
+
+function addLights()
+{
+    let lightOne = new THREE.DirectionalLight(0xffffff);
+    lightOne.position.set(1, 1, 1);
+    scene.add(lightOne);
+
+    // Add a second light with half the intensity
+    let lightTwo = new THREE.DirectionalLight(0xffffff, 0.5);
+    lightTwo.position.set(-1, -1, -1);
+    scene.add(lightTwo);
+}
+
 
 function onWindowResize()
 {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
+    renderer.setPixelRatio( window.devicePixelRatio );
     renderer.setSize(window.innerWidth , window.innerHeight);
-
-    //plane.setSize(window.innerWidth , window.innerHeight);
 }
 
-function criarTodosOsObjetos()
+
+function checkKey(evt)
 {
-  this.createAPlane();
-  this.createSideWalls();
-  this.createASphere();
-  this.createMoveBar();  
-  this.desenhaBarreira();
-}
+    const key = evt.key;
+    const keyCode = evt.keyCode;
 
-function createSideWalls(){
-  var geometrySides = new THREE.BoxGeometry(CUBEWIDTH/3,PLANEHEIGHT,PLANEWIDTH/4);
-  var geometryUP = new THREE.BoxGeometry(PLANEWIDTH + 2*CUBEWIDTH/3,CUBEWIDTH/3,PLANEWIDTH/4);
-  var material = new THREE.MeshBasicMaterial({color: "green"});
-  rigthWall = new THREE.Mesh(geometrySides,material);
-  upWall = new THREE.Mesh(geometryUP,material);
-  leftWall = new THREE.Mesh(geometrySides,material);
-
-  upWall.position.y = PLANEHEIGHT/2 + (CUBEHEIGHT/2);
-  rigthWall.position.x = PLANEWIDTH/2 + (CUBEWIDTH/3)/2;
-  leftWall.position.x = -PLANEWIDTH/2 - (CUBEWIDTH/3)/2;
-
-  scene.add(rigthWall);
-  scene.add(leftWall);
-  scene.add(upWall);
-  this.bordas(rigthWall, 0xFFFFFF);
-  this.bordas(upWall, 0xFFFFFF);
-  this.bordas(leftWall, 0xFFFFFF);
-}
-
-var createAPlane = function () {
-  var geometry = new THREE.PlaneGeometry( PLANEWIDTH, PLANEHEIGHT );
-  var material = new THREE.MeshBasicMaterial( {color: "gray"} );
-  plane = new THREE.Mesh( geometry, material );
-  scene.add( plane );
-
-};
-
-var createASphere = function()
-{
-var geometry = new THREE.SphereGeometry( BALLRADIUS, 20, 20 );
-var material = new THREE.MeshBasicMaterial( {color: 0x080ff});
-ball = new THREE.Mesh( geometry, material );
-ball.position.y = -2;
-ball.position.x = -5;
-this.bordas(ball, 0xFFFFFF);
-scene.add( ball );
-};
-
-//Criar a barra que o utilizador vai controlar 
-var createMoveBar = function()
-{
-    var barGeo = new THREE.BoxGeometry(BARWIDTH, BARHEIGHT, BARDEPTH);
-    var barMat = new THREE.MeshBasicMaterial({ color: "red", });
-    bar = new THREE.Mesh(barGeo, barMat);
-    bar.position.y = -PLANEHEIGHT/2 +4;//Para iniciar,
-    bar.position.z = BARWIDTH/2;
-    bar.name = 'bar';
-
-    this.bordas(bar, 0xFFFFFF);
-
-    scene.add(bar);
-}
-
-var createCube = function(indexPlallet,cubeGeo,i,j)
-{
-  var randomNumber = Math.floor(Math.random() * 5);  
-  var cubeMat = new THREE.MeshBasicMaterial({
-    color: pallete[indexPlallet][randomNumber]
-  });
-  
-  // Make the cube
-  cube = new THREE.Mesh(cubeGeo, cubeMat);
-  //Set yhe cube location
-  cube.position.z =0;
-  cube.position.y = i;
-  cube.position.x = j;
-  cube.name = 'box' + cube.position.x.toString() + "," + cube.position.y.toString();   
-  this.bordas(cube, 0x000000);
-  scene.add(cube);
-  // Used later for collision detection
-  collidableObjects.push(cube);
-
-
-}
-
-function desenhaBarreira() {
-  // Maze wall mapping, assuming even square
-
-  //Cmeça a desenhar desde o x negativo (-PLANEWHIDTH) ate ao (-PLANEWHIDTH)
-  //                         z = 0
-  //                         y = (Ex.: +4)
-
-  // wall details
-  var cubeGeo = new THREE.BoxGeometry(CUBEWIDTH, CUBEHEIGHT, CUBEWIDTH);
-  var indexPlallet = Math.floor(Math.random() * 3);  
-
-  //Começa a desenhar na posicção 0 do z e o y e na posição negativa de metade do plano que desenhamos (que tem centro em 0)
-  //Acaba de desenhar no valor positivo do x igual a metade do plano desenhado e neste caso o y vai até 5 (0 -> 5)
-  for (var i =  BEGINDRAWLINES ; i >= ENDDRAWLINES; i-= CUBEHEIGHT) { // linhas
-    for (var j = BEGINCUBELINE; j <= ENDCUBELINE; j+=CUBEWIDTH) {//colunas
-
-        this.createCube(indexPlallet, cubeGeo,i,j)
-        qtObjects++;
+    if (key == 'ArrowRight' || keyCode == 39)
+    {
+        if (bar.position.x <= ENDBARMOVE)
+            bar.position.x += SPEEDMOVEBAR;
     }
-  }
-    // The size of the maze will be how many cubes wide the array is * the width of a cube
-    //mapSize = totalCubesWide * CUBEWIDTH;
+    else if (key == 'ArrowLeft' || keyCode == 37)
+    {
+        if (bar.position.x >= BEGINBARMOVE)
+            bar.position.x -= SPEEDMOVEBAR;
+    }
 }
 
 
-// Desenha bordas para qulquer objeto (passado como parametro) e de qualquer cor(Passado como parametro)
-function bordas(objeto, cor)
+function mouseMove(evt)
 {
-  var geo = new THREE.EdgesGeometry( objeto.geometry ); // or WireframeGeometry
-  var mat = new THREE.LineBasicMaterial( { color: cor, linewidth: 2 } );
-  var wireframe = new THREE.LineSegments( geo, mat );
-  objeto.add( wireframe );
+    const xPos = evt.clientX;
 
+    // movimento para a direita
+    if (mouseX < xPos)
+    {
+        if (bar.position.x <= ENDBARMOVE)
+            bar.position.x += SPEEDMOVEBAR * MOUSE_SENSITIVITY;
+    }
+    // movimento para a esquerda
+    else if (mouseX > xPos)
+    {
+        if (bar.position.x >= BEGINBARMOVE)
+            bar.position.x -= SPEEDMOVEBAR * MOUSE_SENSITIVITY;
+    }
+
+    mouseX = xPos;
 }
 
 
-window.onload = this.init;
+function updateCamera(evt)
+{
+//max=20
+    camera.position.y--;
+    camera.position.z--;
+
+    camera.lookAt( scene.position );
+}
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+window.onload = init;

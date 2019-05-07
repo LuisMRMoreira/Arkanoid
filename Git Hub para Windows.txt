@@ -1,0 +1,17 @@
+Obter git bash (fazer download)
+
+obeter um editor de texto (o visual studio funciona) como o sublimeText ou visual studio code
+
+Abrir o gitBash na diretoria desejada. Ou se navega dentro do gitHub (comandos (cd [nome da pasta seguinte]) || (ls (pastas dentro) || cd.. (volta atrás na diretoria))) ou clicamos no botão direito do rato na pasta que queremos, no explorador de ficheiros e clicamos em git Bash
+
+
+git status
+
+git add *
+git commit -m "Comentário"
+git push
+
+
+Usar git bash no windows -> https://www.youtube.com/watch?v=h1-XZ9Kh1H4
+
+Como instalar e configurar o git bash -> https://www.youtube.com/watch?v=SOxafinthys
