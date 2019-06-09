@@ -68,6 +68,30 @@ var upWall;
 var mouseX = 0;
 var lifes = 3;
 
+var texto;
+
+
+/////////////////////////////////
+/////////////////////////////////
+/////////////////////////////////
+/////////////////////////////////
+//////////////settings/////////
+var movementSpeed = 80;
+var totalObjects = 1000;
+var objectSize = 100;
+var sizeRandomness = 4000;
+var colors = [0xFF0FFF, 0xCCFF00, 0xFF000F, 0x996600, 0xFFFFFF];
+/////////////////////////////////
+var dirs = [];
+var parts = [];
+//var container = document.createElement('div');
+//document.body.appendChild( container );
+/////////////////////////////////
+/////////////////////////////////
+/////////////////////////////////
+/////////////////////////////////
+
+
 function init()
 {
     scene = new THREE.Scene();
@@ -136,23 +160,95 @@ function render()
         {    ballVector.y = -ballVector.y;    }
         else if(ball.position.y < BOTTOM_Y-INCREMENTO_Y)
         {  
+
+
             if (contador == 0) {
                 PerderVida();
             }
         }
 
+        /////////////////////////////////
+        /////////////////////////////////
+        /////////////////////////////////
+        /////////////////////////////////
+        var pCount = parts.length;
+        while(pCount--) {
+          parts[pCount].update();
+        }
+        /////////////////////////////////
+        /////////////////////////////////
+        /////////////////////////////////
+        /////////////////////////////////
 
         ball.position.x += ballVector.x;
         ball.position.y += ballVector.y;
     }else 
     { 
         // text geometry a dizer que ganhou!!
+        EscreverTexto("Ganhou");
     }
     
 
     requestAnimationFrame(render);
     renderer.render(scene, camera);
 }
+
+
+
+/////////////////////////////////
+/////////////////////////////////
+/////////////////////////////////
+/////////////////////////////////
+function ExplodeAnimation(x,y)
+{
+  var geometry = new THREE.Geometry();
+  
+  for (let i = 0; i < totalObjects; i ++) 
+  { 
+    var vertex = new THREE.Vector3();
+    vertex.x = x;
+    vertex.y = y;
+    vertex.z = 0;
+  
+    geometry.vertices.push( vertex );
+    dirs.push({x:(Math.random() * movementSpeed)-(movementSpeed/2),y:(Math.random() * movementSpeed)-(movementSpeed/2),z:(Math.random() * movementSpeed)-(movementSpeed/2)});
+  }
+  var material = new THREE.ParticleBasicMaterial( { size: objectSize,  color: colors[Math.round(Math.random() * colors.length)] });
+  var particles = new THREE.ParticleSystem( geometry, material );
+  
+  this.object = particles;
+  this.status = true;
+  
+  this.xDir = (Math.random() * movementSpeed)-(movementSpeed/2);
+  this.yDir = (Math.random() * movementSpeed)-(movementSpeed/2);
+  this.zDir = (Math.random() * movementSpeed)-(movementSpeed/2);
+  
+  scene.add( this.object  ); 
+  
+  this.update = function(){
+    if (this.status == true){
+      var pCount = totalObjects;
+      while(pCount--) {
+        var particle =  this.object.geometry.vertices[pCount]
+        particle.y += dirs[pCount].y;
+        particle.x += dirs[pCount].x;
+        particle.z += dirs[pCount].z;
+      }
+      this.object.geometry.verticesNeedUpdate = true;
+    }
+  }
+  
+}
+/////////////////////////////////
+/////////////////////////////////
+/////////////////////////////////
+/////////////////////////////////
+
+
+
+
+
+
 
 
 function showReferencialXYZ()
@@ -171,7 +267,7 @@ function EscreverTexto(texto)
     
         font: font,
     
-        size: 5,
+        size: 3,
         height: 1,
         curveSegments: 12,
     
@@ -182,23 +278,21 @@ function EscreverTexto(texto)
       });
     
       var textMaterial = new THREE.MeshPhongMaterial( 
-        { color: 0xff0000, specular: 0xffffff }
+        { map: Texturas[4], specular: 0xffffff } //color: 0xff0000
       );
     
-      var mesh = new THREE.Mesh( textGeometry, textMaterial );
+      texto = new THREE.Mesh( textGeometry, textMaterial );
     
-      mesh.position.x = -11;
-      mesh.position.z = CUBEHEIGHT*2;
-      mesh.position.y = -3;
-      scene.add( mesh );
+      texto.position.x = -6.5;
+      texto.position.z = CUBEHEIGHT*2;
+      texto.position.y = -3;
+      scene.add( texto );
     
     });
 
 
 
 }
-
-
 
 
 var contador = 0;
@@ -209,9 +303,23 @@ function PerderVida()
     contador = 1;
     scene.remove(Coracoes[lifes]); //material = new THREE.MeshBasicMaterial( 0xFFCCE5 );
     Coracoes.splice(lifes,1);
-    EscreverTexto("Perdeu");
+    if (lifes == 0) {
+        EscreverTexto("Perdeu"); 
+    } else 
+    {
+        IniciarJogoMenosVida();
+    }
 }
 
+
+//Iniciar jogo depois de ter perdido uma vida
+function IniciarJogoMenosVida()
+{
+    ball.position.x = 0;
+    ball.position.y = 0;
+    ballVector = {x: 0, y: -INCREMENTO_Y};
+    contador = 0;
+}
 
 
 function checkBarCollision()
@@ -248,6 +356,7 @@ function removerCubos()
         {
             ballVector.y = -ballVector.y;
 
+            parts.push(new ExplodeAnimation(collidableObjects[i].x, collidableObjects[i].y));
             scene.remove(collidableObjects[i]);
             collidableObjects.splice(i,1);
             
@@ -264,6 +373,7 @@ function removerCubos()
         {
             ballVector.x = -ballVector.x;
 
+            parts.push(new ExplodeAnimation(collidableObjects[i].x, collidableObjects[i].y));
             scene.remove(collidableObjects[i]);
             collidableObjects.splice(i,1);
             
@@ -423,28 +533,40 @@ function CarregarTexturas()
     var texture = new THREE.TextureLoader().load( "../Texturas/bathroom.jpg" );
     texture.wrapS = THREE.MirroredRepeatWrapping;
     texture.wrapT = THREE.MirroredRepeatWrapping;
-    texture.repeat.set( 1, 1 );
+    texture.repeat.set( 4, 4 );
     Texturas.push(texture);
 
     texture = new THREE.TextureLoader().load( "../Texturas/brick-wall.jpg" );
     texture.wrapS = THREE.MirroredRepeatWrapping;
     texture.wrapT = THREE.MirroredRepeatWrapping;
-    texture.repeat.set( 1, 1 );
-    Texturas.push(texture);
-
-    texture = new THREE.TextureLoader().load( "../Texturas/lava.jpg" );
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set( 1, 1 );
+    texture.repeat.set( 4, 4 );
     Texturas.push(texture);
 
     texture = new THREE.TextureLoader().load( "../Texturas/roughness-map.jpg" );
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set( 1, 1 );
+    texture.repeat.set( 4, 4 );
     Texturas.push(texture);
 
     texture = new THREE.TextureLoader().load( "../Texturas/stone.jpg" );
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set( 4, 4 );
+    Texturas.push(texture);
+
+    texture = new THREE.TextureLoader().load( "../Texturas/wood.jpg" );
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set( 1, 1 );
+    Texturas.push(texture);
+
+    texture = new THREE.TextureLoader().load( "../Texturas/bush.jpg" );
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set( 1, 1 );
+    Texturas.push(texture);
+
+    texture = new THREE.TextureLoader().load( "../Texturas/water.jpg" );
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
     texture.repeat.set( 1, 1 );
@@ -645,3 +767,114 @@ function updateCamera(evt)
 
 
 window.onload = init;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// //////////////settings/////////
+// var movementSpeed = 80;
+// var totalObjects = 1000;
+// var objectSize = 10;
+// var sizeRandomness = 4000;
+// var colors = [0xFF0FFF, 0xCCFF00, 0xFF000F, 0x996600, 0xFFFFFF];
+// /////////////////////////////////
+// var dirs = [];
+// var parts = [];
+// var container = document.createElement('div');
+// document.body.appendChild( container );
+
+// var camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight,1, 10000)
+// camera.position.z = 1000; 
+
+// var scene = new THREE.Scene(); 
+
+// function ExplodeAnimation(x,y)
+// {
+//   var geometry = new THREE.Geometry();
+  
+//   for (i = 0; i < totalObjects; i ++) 
+//   { 
+//     var vertex = new THREE.Vector3();
+//     vertex.x = x;
+//     vertex.y = y;
+//     vertex.z = 0;
+  
+//     geometry.vertices.push( vertex );
+//     dirs.push({x:(Math.random() * movementSpeed)-(movementSpeed/2),y:(Math.random() * movementSpeed)-(movementSpeed/2),z:(Math.random() * movementSpeed)-(movementSpeed/2)});
+//   }
+//   var material = new THREE.ParticleBasicMaterial( { size: objectSize,  color: colors[Math.round(Math.random() * colors.length)] });
+//   var particles = new THREE.ParticleSystem( geometry, material );
+  
+//   this.object = particles;
+//   this.status = true;
+  
+//   this.xDir = (Math.random() * movementSpeed)-(movementSpeed/2);
+//   this.yDir = (Math.random() * movementSpeed)-(movementSpeed/2);
+//   this.zDir = (Math.random() * movementSpeed)-(movementSpeed/2);
+  
+//   scene.add( this.object  ); 
+  
+//   this.update = function(){
+//     if (this.status == true){
+//       var pCount = totalObjects;
+//       while(pCount--) {
+//         var particle =  this.object.geometry.vertices[pCount]
+//         particle.y += dirs[pCount].y;
+//         particle.x += dirs[pCount].x;
+//         particle.z += dirs[pCount].z;
+//       }
+//       this.object.geometry.verticesNeedUpdate = true;
+//     }
+//   }
+  
+// }
+
+// var renderer = new THREE.WebGLRenderer();
+// renderer.setSize(window.innerWidth, window.innerHeight);
+// container.appendChild( renderer.domElement );
+
+// renderer.render( scene, camera );
+// parts.push(new ExplodeAnimation(0, 0));
+// render();
+
+// 			function render() {
+//         requestAnimationFrame( render );
+         
+//         var pCount = parts.length;
+//           while(pCount--) {
+//             parts[pCount].update();
+//           }
+
+// 				renderer.render( scene, camera );
+
+// 			}
+
+// window.addEventListener( 'mousedown', onclick, false );
+// window.addEventListener( 'resize', onWindowResize, false );
+
+// function onclick(){
+//   event.preventDefault();
+//   parts.push(new ExplodeAnimation((Math.random() * sizeRandomness)-(sizeRandomness/2), (Math.random() * sizeRandomness)-(sizeRandomness/2)));
+// }
+
+// function onWindowResize() {
+// 				camera.aspect = window.innerWidth / window.innerHeight;
+// 				camera.updateProjectionMatrix();
+
+// 				renderer.setSize( window.innerWidth, window.innerHeight );
+
+// 			}
+
