@@ -1,4 +1,4 @@
-'use strict';
+﻿'use strict';
 
 const PLANEWIDTH  = 15;
 const PLANEHEIGHT = 20;
@@ -46,6 +46,9 @@ const PALLETE = [
   0xFF4ADC, 0xDFB14F, 0xEFF17A, 0x78CB6D, 0x18F7FF,
 ];
 
+const Texturas = [];
+
+const Coracoes = [];
 
 var scene;
 var camera;
@@ -84,7 +87,7 @@ function init()
     window.addEventListener('wheel', updateCamera);
     window.addEventListener('resize',onWindowResize);
     
-    
+    CarregarTexturas();
     createCubos();
     createMoveBar();
     createBall();
@@ -97,6 +100,8 @@ function init()
 
     // para as walls que usam MeshPhongMaterial
     addLights();
+
+    
 
     render();
 }
@@ -124,15 +129,24 @@ function render()
         if (ball.position.y > BOTTOM_Y-INCREMENTO_Y
             && ball.position.y < BOTTOM_Y+INCREMENTO_Y)
         {    checkBarCollision();    }
+        
+        
         // verifica colisão com o topo
         else if(ball.position.y > PLANEHEIGHT/2 - CUBEWIDTH / 6)
         {    ballVector.y = -ballVector.y;    }
         else if(ball.position.y < BOTTOM_Y-INCREMENTO_Y)
-        {  /* loseRound(); */ }
+        {  
+            if (contador == 0) {
+                PerderVida();
+            }
+        }
 
 
         ball.position.x += ballVector.x;
         ball.position.y += ballVector.y;
+    }else 
+    { 
+        // text geometry a dizer que ganhou!!
     }
     
 
@@ -146,6 +160,58 @@ function showReferencialXYZ()
     const axesHelper = new THREE.AxesHelper( 20 );
     scene.add( axesHelper );
 }
+
+
+function EscreverTexto(texto)
+{
+    var loader = new THREE.FontLoader();
+    loader.load( '../Fonts/helvetiker_regular.typeface.json', function ( font ) {
+    
+      var textGeometry = new THREE.TextGeometry( texto, {
+    
+        font: font,
+    
+        size: 5,
+        height: 1,
+        curveSegments: 12,
+    
+        bevelThickness: 0.5,
+        bevelSize: 0.3,
+        bevelEnabled: true
+    
+      });
+    
+      var textMaterial = new THREE.MeshPhongMaterial( 
+        { color: 0xff0000, specular: 0xffffff }
+      );
+    
+      var mesh = new THREE.Mesh( textGeometry, textMaterial );
+    
+      mesh.position.x = -11;
+      mesh.position.z = CUBEHEIGHT*2;
+      mesh.position.y = -3;
+      scene.add( mesh );
+    
+    });
+
+
+
+}
+
+
+
+
+var contador = 0;
+
+function PerderVida()
+{
+    lifes--;
+    contador = 1;
+    scene.remove(Coracoes[lifes]); //material = new THREE.MeshBasicMaterial( 0xFFCCE5 );
+    Coracoes.splice(lifes,1);
+    EscreverTexto("Perdeu");
+}
+
 
 
 function checkBarCollision()
@@ -182,11 +248,9 @@ function removerCubos()
         {
             ballVector.y = -ballVector.y;
 
-            if (collidableObjects[i].name == "box" + collidableObjects[i].position.x.toString() + "," + collidableObjects[i].position.y.toString())
-            {
-                scene.remove(scene.getObjectByName(collidableObjects[i].name));
-                collidableObjects.splice(i,1);
-            }
+            scene.remove(collidableObjects[i]);
+            collidableObjects.splice(i,1);
+            
             break;
         }
 
@@ -200,11 +264,9 @@ function removerCubos()
         {
             ballVector.x = -ballVector.x;
 
-            if (collidableObjects[i].name == "box" + collidableObjects[i].position.x.toString() + "," + collidableObjects[i].position.y.toString())
-            {
-                scene.remove(scene.getObjectByName(collidableObjects[i].name));
-                collidableObjects.splice(i,1);
-            }
+            scene.remove(collidableObjects[i]);
+            collidableObjects.splice(i,1);
+            
             break;
         }
 
@@ -214,8 +276,11 @@ function removerCubos()
 
 function createCubos()
 {
-    const cubeGeo = new THREE.BoxGeometry(CUBEWIDTH, CUBEHEIGHT, DEPTH);
-    const indexPlallet = Math.floor(Math.random() * 3);  
+    //const cubeGeo = new THREE.BoxGeometry(CUBEWIDTH, CUBEHEIGHT, DEPTH);
+    //const indexPlallet = Math.floor(Math.random() * 3);  
+    
+    const cubeGeo = RoundEdgedBox(CUBEWIDTH, CUBEHEIGHT, DEPTH, 0.1, 1,1, 1, 2);// Passar a função RoundEdgedBox
+
 
     //Começa a desenhar na posicção 0 do z e o y e na posição negativa de metade do plano que desenhamos (que tem centro em 0)
     //Acaba de desenhar no valor positivo do x igual a metade do plano desenhado e neste caso o y vai até 5 (0 -> 5)
@@ -226,17 +291,165 @@ function createCubos()
         //colunas
         for (let j = BEGINCUBELINE; j <= ENDCUBELINE; j+=CUBEWIDTH)
         {
-            const cubeMat = new THREE.MeshBasicMaterial({color: PALLETE[Math.floor(Math.random() * (PALLETE.length))]});
-            const cube = new THREE.Mesh(cubeGeo, cubeMat);
+            
+            var k = Math.floor(Math.random() * Texturas.length);            
+            var cubeMat = new THREE.MeshBasicMaterial({ map: Texturas[k] } );//texturas aleatorias
+            var cube = new THREE.Mesh(cubeGeo, cubeMat);
             cube.position.x = j;
             cube.position.y = i;
             cube.position.z = DEPTH;
-            cube.name = 'box' + cube.position.x.toString() + "," + cube.position.y.toString();
             drawBordas(cube, 0x000000);
+            collidableObjects.push(cube);            
             scene.add(cube);
-            collidableObjects.push(cube);
+
+
+            // const cubeMat = new THREE.MeshBasicMaterial({color: PALLETE[Math.floor(Math.random() * (PALLETE.length))]});
+            // const cube = new THREE.Mesh(cubeGeo, cubeMat);
+            // cube.position.x = j;
+            // cube.position.y = i;
+            // cube.position.z = DEPTH;
+            // cube.name = 'box' + cube.position.x.toString() + "," + cube.position.y.toString();
+            // drawBordas(cube, 0x000000);
+            // scene.add(cube);
+            // collidableObjects.push(cube);
         }
     }
+}
+
+
+function RoundEdgedBox(width, height, depth, radius, widthSegments, heightSegments, depthSegments, smoothness) {
+
+    width = width || 1;
+    height = height || 1;
+    depth = depth || 1;
+    radius = radius || (Math.min(Math.min(width, height), depth) * .25);
+    widthSegments = Math.floor(widthSegments) || 1;
+    heightSegments = Math.floor(heightSegments) || 1;
+    depthSegments = Math.floor(depthSegments) || 1;
+    smoothness = Math.max(3, Math.floor(smoothness) || 3);
+
+    let halfWidth = width * .5 - radius;
+    let halfHeight = height * .5 - radius;
+    let halfDepth = depth * .5 - radius;
+
+    var geometry = new THREE.Geometry();
+
+    // corners - 4 eighths of a sphere
+    var corner1 = new THREE.SphereGeometry(radius, smoothness, smoothness, 0, Math.PI * .5, 0, Math.PI * .5);
+    corner1.translate(-halfWidth, halfHeight, halfDepth);
+    var corner2 = new THREE.SphereGeometry(radius, smoothness, smoothness, Math.PI * .5, Math.PI * .5, 0, Math.PI * .5);
+    corner2.translate(halfWidth, halfHeight, halfDepth);
+    var corner3 = new THREE.SphereGeometry(radius, smoothness, smoothness, 0, Math.PI * .5, Math.PI * .5, Math.PI * .5);
+    corner3.translate(-halfWidth, -halfHeight, halfDepth);
+    var corner4 = new THREE.SphereGeometry(radius, smoothness, smoothness, Math.PI * .5, Math.PI * .5, Math.PI * .5, Math.PI * .5);
+    corner4.translate(halfWidth, -halfHeight, halfDepth);
+    
+    geometry.merge(corner1);
+    geometry.merge(corner2);
+    geometry.merge(corner3);
+    geometry.merge(corner4);
+
+    // edges - 2 fourths for each dimension
+    // width
+    var edge = new THREE.CylinderGeometry(radius, radius, width - radius * 2, smoothness, widthSegments, true, 0, Math.PI * .5);
+    edge.rotateZ(Math.PI * .5);
+    edge.translate(0, halfHeight, halfDepth);
+    var edge2 = new THREE.CylinderGeometry(radius, radius, width - radius * 2, smoothness, widthSegments, true, Math.PI * 1.5, Math.PI * .5);
+    edge2.rotateZ(Math.PI * .5);
+    edge2.translate(0, -halfHeight, halfDepth);
+
+    // height
+    var edge3 = new THREE.CylinderGeometry(radius, radius, height - radius * 2, smoothness, heightSegments, true, 0, Math.PI * .5);
+    edge3.translate(halfWidth, 0, halfDepth);
+    var edge4 = new THREE.CylinderGeometry(radius, radius, height - radius * 2, smoothness, heightSegments, true, Math.PI * 1.5, Math.PI * .5);
+    edge4.translate(-halfWidth, 0, halfDepth);
+
+    // depth
+    var edge5 = new THREE.CylinderGeometry(radius, radius, depth - radius * 2, smoothness, depthSegments, true, 0, Math.PI * .5);
+    edge5.rotateX(-Math.PI * .5);
+    edge5.translate(halfWidth, halfHeight, 0);
+    var edge6 = new THREE.CylinderGeometry(radius, radius, depth - radius * 2, smoothness, depthSegments, true, Math.PI * .5, Math.PI * .5);
+    edge6.rotateX(-Math.PI * .5);
+    edge6.translate(halfWidth, -halfHeight, 0);
+
+    edge.merge(edge2);
+    edge.merge(edge3);
+    edge.merge(edge4);
+    edge.merge(edge5);
+    edge.merge(edge6);
+
+    // sides
+    // front
+    var side = new THREE.PlaneGeometry(width - radius * 2, height - radius * 2, widthSegments, heightSegments);
+    side.translate(0, 0, depth * .5);
+
+    // right
+    var side2 = new THREE.PlaneGeometry(depth - radius * 2, height - radius * 2, depthSegments, heightSegments);
+    side2.rotateY(Math.PI * .5);
+    side2.translate(width * .5, 0, 0);
+
+    side.merge(side2);
+
+    geometry.merge(edge);
+    geometry.merge(side);
+
+    // duplicate and flip
+    var secondHalf = geometry.clone();
+    secondHalf.rotateY(Math.PI);
+    geometry.merge(secondHalf);
+
+    // top
+    var top = new THREE.PlaneGeometry(width - radius * 2, depth - radius * 2, widthSegments, depthSegments);
+    top.rotateX(-Math.PI * .5);
+    top.translate(0, height * .5, 0);
+
+    // bottom
+    var bottom = new THREE.PlaneGeometry(width - radius * 2, depth - radius * 2, widthSegments, depthSegments);
+    bottom.rotateX(Math.PI * .5);
+    bottom.translate(0, -height * .5, 0);
+
+    geometry.merge(top);
+    geometry.merge(bottom);
+
+    geometry.mergeVertices();
+
+    geometry
+    return geometry;
+}
+
+
+function CarregarTexturas()
+{
+    var texture = new THREE.TextureLoader().load( "../Texturas/bathroom.jpg" );
+    texture.wrapS = THREE.MirroredRepeatWrapping;
+    texture.wrapT = THREE.MirroredRepeatWrapping;
+    texture.repeat.set( 1, 1 );
+    Texturas.push(texture);
+
+    texture = new THREE.TextureLoader().load( "../Texturas/brick-wall.jpg" );
+    texture.wrapS = THREE.MirroredRepeatWrapping;
+    texture.wrapT = THREE.MirroredRepeatWrapping;
+    texture.repeat.set( 1, 1 );
+    Texturas.push(texture);
+
+    texture = new THREE.TextureLoader().load( "../Texturas/lava.jpg" );
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set( 1, 1 );
+    Texturas.push(texture);
+
+    texture = new THREE.TextureLoader().load( "../Texturas/roughness-map.jpg" );
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set( 1, 1 );
+    Texturas.push(texture);
+
+    texture = new THREE.TextureLoader().load( "../Texturas/stone.jpg" );
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set( 1, 1 );
+    Texturas.push(texture);
+
 }
 
 
@@ -300,6 +513,7 @@ function createHearts()
         mesh.position.set(BEGINBARMOVE + i*1.5, -PLANEHEIGHT/2 + 1, DEPTH);
         drawBordas(mesh, 0xFFFFFF);
         mesh.name = 'heart' + i.toString();
+        Coracoes.push(mesh);
         scene.add(mesh);
     }
 }

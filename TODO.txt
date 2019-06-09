@@ -1,0 +1,3 @@
+Mudar texturas dos cubos (blocos, madeira, areia, relva).
+Boneco de bonus (saida aleatória).
+Animação de explosão dos blocos.
